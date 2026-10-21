@@ -15,7 +15,7 @@ const FIELDS: { key: Field; label: string }[] = [
   { key: 'job_title', label: 'Fonction' },
   { key: 'source', label: 'Source' },
   { key: 'notes', label: 'Notes' },
-  { key: 'country', label: 'Pays (iso2)' },
+  { key: 'country', label: 'Pays' },
   { key: 'city', label: 'Ville' },
   { key: 'tag', label: 'Tag' },
   { key: 'email', label: 'Email' },
@@ -35,12 +35,19 @@ const OPS: { key: Operator; label: string }[] = [
 
 const EMPTY_RULE: Rule = { field: 'full_name', op: 'contains', value: '' }
 
-export default function SegmentBuilder({ tags, sources, countries, cities, orgId }: {
+export type SegmentGroup = { and: Rule[]; or: Rule[]; not: Rule[] }
+
+export default function SegmentBuilder({ tags, sources, countries, cities, orgId, onSaved, submitLabel, embedded = false }: {
   tags: string[]
   sources: string[]
   countries: { iso2: string; name: string }[]
   cities: string[]
   orgId: string
+  /** Mode « intégré » : on prévient l'appelant au lieu de quitter la page. */
+  onSaved?: (segment: { id: string; name: string; rules: SegmentGroup[] }) => void
+  submitLabel?: string
+  /** Rendu compact sans cartes, pour un formulaire hôte (export). */
+  embedded?: boolean
 }) {
   const router = useRouter()
   const [name, setName] = useState('')
@@ -76,7 +83,7 @@ export default function SegmentBuilder({ tags, sources, countries, cities, orgId
     setGroups(g => [...g, { and: [{ ...EMPTY_RULE }], or: [], not: [] }])
   }
 
-  function serialize() {
+  function serialize(): SegmentGroup[] {
     // SERIALIZATION : array of groups, each AND(...) OR(...) NOT(...)
     return groups.map(gr => ({
       and: gr.and.filter(r => r.value || ['is_empty', 'not_empty'].includes(r.op)),
@@ -111,22 +118,29 @@ export default function SegmentBuilder({ tags, sources, countries, cities, orgId
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'add', name: name.trim(), description: description.trim() || undefined, rules: serialize() }),
       })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        throw new Error(j.error || 'Enregistrement impossible')
-      }
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Enregistrement impossible')
       setSaved(true)
-      router.push('/segments')
-      router.refresh()
+      if (onSaved) {
+        onSaved({ id: String(json.id ?? ''), name: name.trim(), rules: serialize() })
+        setName('')
+        setDescription('')
+        setCount(null)
+      } else {
+        router.push('/segments')
+        router.refresh()
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue')
     }
     setBusy(false)
   }
 
+  const blockClass = embedded ? 'space-y-3' : 'glass-card space-y-3'
+
   return (
-    <div className="space-y-4">
-      <div className="glass-card space-y-3">
+    <div className={embedded ? 'space-y-3' : 'space-y-4'}>
+      <div className={blockClass}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-[color:var(--text-muted)]">Nom du segment</label>
@@ -141,7 +155,7 @@ export default function SegmentBuilder({ tags, sources, countries, cities, orgId
       </div>
 
       {groups.map((gr, i) => (
-        <div key={i} className="glass-card space-y-3">
+        <div key={i} className={blockClass}>
           {i > 0 && <p className="text-xs font-bold text-[color:var(--text-secondary)]">OU (intersection entre groupes = UNION)</p>}
           <RuleList mode="and" label="ET (AND)" rules={gr.and} groupIdx={i}
             editRule={editRule} removeRule={removeRule} addRule={addRule}
@@ -162,7 +176,7 @@ export default function SegmentBuilder({ tags, sources, countries, cities, orgId
         </button>
         {count !== null && <span className="badge badge-blue">{count} contact(s)</span>}
         <button onClick={save} disabled={busy || !name.trim()} className="btn btn-primary ml-auto">
-          Enregistrer le segment
+          {submitLabel ?? 'Enregistrer le segment'}
         </button>
         {saved && <span className="badge badge-green">Segment enregistré</span>}
         {error && <p className="alert-error w-full">{error}</p>}
@@ -196,7 +210,12 @@ function RuleList({ mode, label, rules, groupIdx, editRule, removeRule, addRule,
       {rules.map((r, ri) => (
         <div key={ri} className="flex flex-wrap gap-2 items-center py-1">
           <select className="input max-w-[150px] text-xs" value={r.field}
-            onChange={(e) => editRule(groupIdx, mode, ri, { field: e.target.value as Field })}>
+            onChange={(e) => {
+              const field = e.target.value as Field
+              const needsValue = !['is_empty', 'not_empty'].includes(r.op)
+              // on repart d'une valeur propre : « oui » pour un booléen, vide sinon
+              editRule(groupIdx, mode, ri, { field, value: needsValue && field === 'phone_valid' ? 'true' : '' })
+            }}>
             {FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
           </select>
           <select className="input max-w-[150px] text-xs" value={r.op}

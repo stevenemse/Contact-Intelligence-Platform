@@ -88,7 +88,7 @@ export default async function SegmentsPage() {
               {s.rulesText.map((t, i) => <li key={i}>◆ {t}</li>)}
             </ul>
             <div className="flex gap-2 pt-1">
-              <Link href="/exports/new" className="btn btn-ghost text-xs">Exporter</Link>
+              <Link href={`/exports/new?segment=${s.id}`} className="btn btn-ghost text-xs">Exporter</Link>
               <SegmentsActions segmentId={s.id} />
             </div>
           </div>

@@ -1,5 +1,6 @@
 import 'server-only'
 import { serviceDb } from './server'
+import { selectAllRows } from './pagination'
 import { str, num } from './helpers'
 import type { DbContact } from './data'
 
@@ -67,6 +68,44 @@ export async function contactsFiltersData(orgId: string): Promise<{
   return { countries, sources, tags }
 }
 
+/**
+ * Pays réellement exploitables : `country_iso2` quand il est renseigné, sinon
+ * l'indicatif du téléphone principal (c'est la donnée qui existe vraiment dans
+ * les fichiers importés). Sert aux filtres et à l'export par pays.
+ */
+export async function effectiveCountryData(orgId: string): Promise<{
+  countries: CountryAgg[]
+  total: number
+}> {
+  const db = serviceDb()
+  if (!db) return { countries: [], total: 0 }
+  const [contacts, phones] = await Promise.all([
+    selectAllRows<{ id: string; country_iso2: string | null }>((from, to) =>
+      db.from('contacts').select('id, country_iso2')
+        .eq('organization_id', orgId).is('merged_into', null)
+        .order('id', { ascending: true }).range(from, to)),
+    selectAllRows<{ contact_id: string; country_code: string | null }>((from, to) =>
+      db.from('contact_phones').select('contact_id, country_code')
+        .eq('organization_id', orgId).eq('is_primary', true)
+        .order('id', { ascending: true }).range(from, to)),
+  ])
+  const phoneCountry = new Map<string, string>()
+  for (const p of phones) {
+    const iso = str(p.country_code).toUpperCase()
+    if (iso && !phoneCountry.has(str(p.contact_id))) phoneCountry.set(str(p.contact_id), iso)
+  }
+  const counts = new Map<string, number>()
+  for (const c of contacts) {
+    const iso = str(c.country_iso2).toUpperCase() || phoneCountry.get(str(c.id)) || ''
+    if (!iso) continue
+    counts.set(iso, (counts.get(iso) ?? 0) + 1)
+  }
+  const countries = [...counts.entries()]
+    .map(([iso2, n]) => ({ iso2, name: countryLabel(iso2), n }))
+    .sort((a, b) => b.n - a.n)
+  return { countries, total: contacts.length }
+}
+
 /** Listes distinctes pour le segment builder (pays, sources, villes, tags). */
 export async function segmentBuilderData(orgId: string): Promise<{
   countries: { iso2: string; name: string }[]
@@ -74,16 +113,24 @@ export async function segmentBuilderData(orgId: string): Promise<{
   cities: string[]
   tags: string[]
 }> {
-  const base = await contactsFiltersData(orgId)
+  const [base, effective] = await Promise.all([
+    contactsFiltersData(orgId),
+    effectiveCountryData(orgId),
+  ])
   const db = serviceDb()
-  let cities: string[] = base.tags.length >= 0 ? [] : []
+  let cities: string[] = []
   if (db) {
     const { data } = await db.from('contacts').select('city')
       .eq('organization_id', orgId).is('merged_into', null).not('city', 'is', null).limit(10000)
     cities = [...new Set(((data ?? []) as unknown as { city: string | null }[]).map(r => str(r.city)).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, 'fr'))
   }
-  return { countries: base.countries, sources: base.sources, cities, tags: base.tags }
+  return {
+    countries: effective.countries.map(c => ({ iso2: c.iso2, name: c.name })),
+    sources: base.sources,
+    cities,
+    tags: base.tags,
+  }
 }
 
 export type DupGroup = { normalized_phone: string; n: number; contact_ids: string[] }

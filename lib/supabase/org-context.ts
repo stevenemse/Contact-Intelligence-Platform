@@ -1,6 +1,7 @@
 import 'server-only'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
+import { connection } from 'next/server'
 import { getAuthUser, serviceDb } from './server'
 
 export type Role = 'owner' | 'admin' | 'manager' | 'member' | 'viewer'
@@ -42,6 +43,10 @@ export async function getMembership(user: { id: string; email: string }): Promis
 }
 
 export async function getOrgContext(): Promise<OrgCtx | null> {
+  // rendu « à la demande » dès l'accès à la session : les internals auth
+  // (calcul d'expiration de token) appellent Date.now(), interdit pendant le
+  // prerender du shell statique (Next 16 cacheComponents).
+  await connection()
   const user = await getAuthUser()
   if (!user) return null
   const db = serviceDb()

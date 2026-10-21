@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { getOrgContext } from '@/lib/supabase/org-context'
 import { serviceDb } from '@/lib/supabase/server'
 import { loadRelations } from '@/lib/supabase/data'
+import { selectAllRows } from '@/lib/supabase/pagination'
+import { countryLabel } from '@/lib/supabase/page-data'
 import { validateSegmentRules, loadEnrichedContacts, applySegmentGroups } from '@/lib/supabase/segment-engine'
 import { logActivity } from '@/lib/supabase/data'
 
@@ -58,53 +60,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validated.error ?? 'Segment invalide' }, { status: 400 })
     }
     const enriched = await loadEnrichedContacts(org)
-    const ids = new Set(applySegmentGroups(validated.groups, enriched))
-    { // fetch des lignes complètes pour ces ids
-      const list = [...ids.values()].slice(0, 10000)
-      for (let i = 0; i < list.length; i += 200) {
-        const chunk = list.slice(i, i + 200)
-        const { data } = await db.from('contacts').select('*').eq('organization_id', org).in('id', chunk)
-        rows.push(...(data ?? []).map((d: Record<string, unknown>) => ({ id: String(d.id), data: d })))
-      }
+    const ids = [...new Set(applySegmentGroups(validated.groups, enriched))]
+    for (let i = 0; i < ids.length; i += 200) {
+      const chunk = ids.slice(i, i + 200)
+      const { data } = await db.from('contacts').select('*').eq('organization_id', org).in('id', chunk)
+      rows.push(...(data ?? []).map((d: Record<string, unknown>) => ({ id: String(d.id), data: d })))
     }
-  } else if (body.scope === 'countries' && body.countries?.length) {
-    const sel = body.countries.map(c => c.toUpperCase())
-    const { data } = await db.from('contacts').select('*')
-      .eq('organization_id', org).is('merged_into', null).in('country_iso2', sel).limit(10000)
-    rows = (data ?? []).map((d: Record<string, unknown>) => ({ id: String(d.id), data: d }))
   } else {
-    const { data } = await db.from('contacts').select('*')
-      .eq('organization_id', org).is('merged_into', null).limit(10000)
-    rows = (data ?? []).map((d: Record<string, unknown>) => ({ id: String(d.id), data: d }))
+    // base entière ou sélection par pays : pays effectif = country_iso2 sinon indicatif du tél. principal
+    const [contacts, primaryPhones] = await Promise.all([
+      selectAllRows<Record<string, unknown>>((from, to) =>
+        db.from('contacts').select('*').eq('organization_id', org).is('merged_into', null)
+          .order('id', { ascending: true }).range(from, to)),
+      selectAllRows<{ contact_id: string; country_code: string | null }>((from, to) =>
+        db.from('contact_phones').select('contact_id, country_code')
+          .eq('organization_id', org).eq('is_primary', true)
+          .order('id', { ascending: true }).range(from, to)),
+    ])
+    const phoneCountry = new Map<string, string>()
+    for (const p of primaryPhones) {
+      const iso = (p.country_code ?? '').toUpperCase()
+      if (iso && !phoneCountry.has(p.contact_id)) phoneCountry.set(p.contact_id, iso)
+    }
+    const wanted = body.scope === 'countries' && body.countries?.length
+      ? new Set(body.countries.map(c => c.toUpperCase()))
+      : null
+    for (const c of contacts) {
+      const id = String(c.id)
+      const iso2 = String(c.country_iso2 ?? '').toUpperCase() || phoneCountry.get(id) || ''
+      if (wanted && !wanted.has(iso2)) continue
+      rows.push({ id, data: { ...c, __iso2: iso2 } })
+    }
   }
 
   // ── relations (phones / emails / tags) ───────────────────────────────────
   const rel = await loadRelations(org, rows.map(r => r.id))
-  const emailsExtra = await db.from('contact_emails').select('contact_id, email, is_primary')
-    .eq('organization_id', org)
-    .in('contact_id', rows.length > 0 ? rows.map(r => r.id) : ['00000000-0000-0000-0000-000000000000'])
-    .limit(30000)
-  const emailsByContact2 = new Map<string, ReturnType<typeof getEmails>[]>()
-  const getEmails = (email: string, isPrimary: boolean) => ({ email, isPrimary })
-  for (const e of (emailsExtra.data ?? []) as { contact_id: string; email: string | null; is_primary: boolean | null }[]) {
-    const list = emailsByContact2.get(e.contact_id) ?? []
-    list.push(getEmails(e.email ?? '', Boolean(e.is_primary)))
-    emailsByContact2.set(e.contact_id, list)
-  }
 
   const flat = rows.map(({ id, data: r }) => {
     const phones = rel.phonesById.get(id) ?? []
     const primary = phones.find(p => p.isPrimary) ?? phones[0]
-    const emails = emailsByContact2.get(id) ?? []
+    const emails = rel.emailsById.get(id) ?? []
     const primaryEmail = emails.find(e => e.isPrimary) ?? emails[0]
     const tags = (rel.tagsById.get(id) ?? []).map(t => t.name)
+    const iso2 = String(r.__iso2 ?? r.country_iso2 ?? '').toUpperCase()
     return {
       full_name: String(r.full_name ?? '') || [String(r.first_name ?? ''), String(r.last_name ?? '')].filter(Boolean).join(' '),
       first_name: String(r.first_name ?? ''),
       last_name: String(r.last_name ?? ''),
       phone: primary ? (primary.isValid ? (primary.e164 ?? primary.normalizedPhone ?? '') : primary.rawPhone) : '',
       email: primaryEmail?.email ?? '',
-      country: String(r.country_name ?? ''),
+      country: String(r.country_name ?? '') || countryLabel(iso2 || null),
       region: String(r.region ?? ''),
       city: String(r.city ?? ''),
       company: String(r.company ?? ''),
@@ -113,7 +118,7 @@ export async function POST(req: NextRequest) {
       tags: tags.join(', '),
       notes: String(r.notes ?? ''),
       created_at: String(r.created_at ?? '').slice(0, 10),
-      __iso2: String(r.country_iso2 ?? '').toUpperCase(),
+      __iso2: iso2,
     }
   })
 
@@ -121,7 +126,7 @@ export async function POST(req: NextRequest) {
   const groups: { iso2: string | null; rows: typeof flat }[] =
     body.splitByCountry
       ? [...flat.reduce<Map<string, typeof flat>>((acc, r) => {
-          const k = r.__iso2 ?? 'ZZ'
+          const k = r.__iso2 || 'ZZ' // ZZ = pays inconnu
           const list = acc.get(k) ?? []
           list.push(r)
           acc.set(k, list)
