@@ -12,6 +12,13 @@ import { loadRelations } from '@/lib/supabase/data'
 import ContactDetail from '@/components/contact-detail'
 import ContactEditor from '@/components/contact-editor'
 
+const FIELD_LABELS: Record<string, string> = {
+  first_name: 'Prénom', last_name: 'Nom', full_name: 'Nom complet', company: 'Entreprise',
+  job_title: 'Fonction', source: 'Source', notes: 'Notes', country_iso2: 'Pays', country_name: 'Pays',
+  fusion_entreprises: 'Entreprises fusionnées', fusion_fonctions: 'Fonctions fusionnées',
+  fusion_fiches: 'Fiches fusionnées',
+}
+
 export default async function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireOrg()
   const { id } = await params
@@ -38,18 +45,47 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
     .map(t => ({ id: t.id, name: str(t.name), color: str(t.color) || '#2563eb' }))
   const currentTags = tags.map(t => ({ tag_id: t.id, tags: { name: t.name, color: t.color } }))
 
-  // historique des modifications (si présent)
+  // historique des modifications (colonne jsonb `fields`, horodatage `changed_at`)
   let changes: { id: string; label: string; at: string }[] = []
   try {
     const { data: ch } = await db!.from('contact_changes').select('*')
       .eq('organization_id', ctx.orgId).eq('contact_id', id)
-      .order('created_at', { ascending: false }).limit(30)
-    changes = ((ch ?? []) as unknown as Record<string, unknown>[]).map(r => ({
-      id: str(r.id),
-      label: `${str(r.field) || 'modification'} : ${str(r.old_value)} → ${str(r.new_value)}`,
-      at: fmtDate(str(r.created_at)),
-    }))
+      .order('changed_at', { ascending: false }).limit(30)
+    changes = ((ch ?? []) as unknown as Record<string, unknown>[]).flatMap(r => {
+      const fields = (r.fields ?? {}) as Record<string, unknown>
+      const parts = Object.entries(fields)
+        .filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '')
+        .map(([k, v]) => {
+          const name = FIELD_LABELS[k] ?? k
+          return k.startsWith('fusion_') ? `${name} : ${String(v)}` : `${name} (avant) : ${String(v)}`
+        })
+      if (parts.length === 0) return []
+      return [{ id: str(r.id), label: parts.join(' · '), at: fmtDate(str(r.changed_at)) }]
+    })
   } catch { /* table optionnelle */ }
+
+  // fiches absorbées lors d'une fusion : rien n'est perdu, tout reste consultable
+  const { data: mergedRows } = await db!.from('contacts')
+    .select('id, full_name, first_name, last_name, company, job_title, updated_at')
+    .eq('organization_id', ctx.orgId).eq('merged_into', id).limit(30)
+  const mergedRaw = ((mergedRows ?? []) as unknown as Record<string, unknown>[])
+  const mergedRel = mergedRaw.length
+    ? await loadRelations(ctx.orgId, mergedRaw.map(r => str(r.id)))
+    : null
+  const mergedFrom = mergedRaw.map(r => {
+    const mid = str(r.id)
+    const phoneList = mergedRel?.phonesById.get(mid) ?? []
+    const mainPhone = phoneList.find(p => p.isPrimary) ?? phoneList[0]
+    return {
+      id: mid,
+      name: str(r.full_name) || [str(r.first_name), str(r.last_name)].filter(Boolean).join(' ') || '(sans nom)',
+      company: str(r.company),
+      jobTitle: str(r.job_title),
+      phone: mainPhone?.normalizedPhone ?? mainPhone?.rawPhone ?? '',
+      at: fmtDate(str(r.updated_at)),
+    }
+  })
+  const mergedCompanies = [...new Set(mergedFrom.map(m => m.company).filter(Boolean))]
 
   // import d'origine
   const importId = str(contact.import_id)
@@ -111,6 +147,14 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               {str(contact.company) || '—'} · {str(contact.country_name) || '—'} {str(contact.city) ? `· ${str(contact.city)}` : ''} ·
               {' '}ajouté le {fmtDate(str(contact.created_at))}
             </p>
+            {mergedFrom.length > 0 && (
+              <p className="text-xs mt-2 flex flex-wrap items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                <span>Entreprises fusionnées :</span>
+                {mergedCompanies.length === 0
+                  ? <span style={{ color: 'var(--text-faint)' }}>—</span>
+                  : mergedCompanies.map(c => <span key={c} className="badge">{c}</span>)}
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             {importInfo && <span className="badge">importé via {importInfo.file}</span>}
@@ -147,6 +191,35 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           currentTags={currentTags}
         />
       </div>
+
+      {mergedFrom.length > 0 && (
+        <div className="glass-card">
+          <h3 className="section-title mb-1">Fiches fusionnées ({mergedFrom.length})</h3>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+            Ces fiches ont été absorbées : leurs entreprises, fonctions, numéros et groupes sont conservés et restent consultables.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="data-table min-w-[640px] text-sm">
+              <thead>
+                <tr><th>Fiche</th><th>Entreprise</th><th>Fonction</th><th>Téléphone</th><th>Fusionnée le</th></tr>
+              </thead>
+              <tbody>
+                {mergedFrom.map(m => (
+                  <tr key={m.id}>
+                    <td>
+                      <Link href={`/contacts/${m.id}`} className="hover:underline" style={{ color: 'var(--brand-deep)' }}>{m.name}</Link>
+                    </td>
+                    <td>{m.company || '—'}</td>
+                    <td>{m.jobTitle || '—'}</td>
+                    <td className="tabular-nums">{m.phone || '—'}</td>
+                    <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{m.at}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div className="kpi-card">

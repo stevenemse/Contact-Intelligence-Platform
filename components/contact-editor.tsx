@@ -105,7 +105,8 @@ export default function ContactEditor({ orgId: _orgId, contact, canWrite, countr
         </div>
         <div>
           <label className="text-xs font-medium text-[color:var(--text-secondary)]">Ville (donnée uniquement si présente dans vos données)</label>
-          <select className="input mt-1" disabled={readOnly} value={f.city_id ?? ''}>
+          {/* non éditable : la ville n'est jamais déduite automatiquement */}
+          <select className="input mt-1" disabled value={f.city_id ?? ''}>
             <option value="">—</option>
             {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
