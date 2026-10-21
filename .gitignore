@@ -39,6 +39,7 @@ yarn-error.log*
 # dev/logs
 dev-server.log
 dev-server.pid
+screenshots/
 .freebuff/
 design/
 

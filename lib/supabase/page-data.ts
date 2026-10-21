@@ -87,6 +87,7 @@ export async function segmentBuilderData(orgId: string): Promise<{
 }
 
 export type DupGroup = { normalized_phone: string; n: number; contact_ids: string[] }
+export type DupPhone = { phone: string; isPrimary: boolean; isValid: boolean }
 export type DupContact = {
   fullName: string | null
   company: string | null
@@ -94,6 +95,8 @@ export type DupContact = {
   source: string | null
   countryName: string | null
   city: string | null
+  phones: DupPhone[]
+  tags: { name: string; color: string }[]
   emails: { email: string }[] | null
 }
 
@@ -109,20 +112,25 @@ export async function dupDetectionData(orgId: string): Promise<{
   const db = serviceDb()
   if (!db) return { groups: [], contacts: {}, totalDupes: 0 }
   const [phRes, emRes] = await Promise.all([
-    db.from('contact_phones').select('contact_id, normalized_phone, is_primary')
+    db.from('contact_phones').select('contact_id, normalized_phone, is_primary, is_valid')
       .eq('organization_id', orgId).not('normalized_phone', 'is', null).limit(20000),
     db.from('contact_emails').select('contact_id, email, is_primary').eq('organization_id', orgId).limit(20000),
   ])
-  const byContactId = new Map<string, { ph: string | null; emails: { email: string }[] }>()
-  for (const p of ((phRes.data ?? []) as unknown as { contact_id: string; normalized_phone: string | null; is_primary: boolean | null }[])) {
-    const entry = byContactId.get(str(p.contact_id)) ?? { ph: null, emails: [] }
-    if (p.is_primary && p.normalized_phone) entry.ph = p.normalized_phone
-    byContactId.set(str(p.contact_id), entry)
+  const byContactId = new Map<string, { ph: string | null; phones: DupPhone[]; emails: { email: string }[] }>()
+  for (const p of ((phRes.data ?? []) as unknown as { contact_id: string; normalized_phone: string | null; is_primary: boolean | null; is_valid: boolean | null }[])) {
+    const cid = str(p.contact_id)
+    const entry = byContactId.get(cid) ?? { ph: null, phones: [], emails: [] }
+    if (p.normalized_phone) {
+      entry.phones.push({ phone: p.normalized_phone, isPrimary: Boolean(p.is_primary), isValid: Boolean(p.is_valid) })
+      if (p.is_primary) entry.ph = p.normalized_phone
+    }
+    byContactId.set(cid, entry)
   }
   for (const e of ((emRes.data ?? []) as unknown as { contact_id: string; email: string | null; is_primary: boolean | null }[])) {
-    const entry = byContactId.get(str(e.contact_id)) ?? { ph: null, emails: [] }
+    const cid = str(e.contact_id)
+    const entry = byContactId.get(cid) ?? { ph: null, phones: [], emails: [] }
     entry.emails.push({ email: str(e.email) })
-    byContactId.set(str(e.contact_id), entry)
+    byContactId.set(cid, entry)
   }
 
   const phoneMap = new Map<string, string[]>()
@@ -141,10 +149,27 @@ export async function dupDetectionData(orgId: string): Promise<{
   const contacts: Record<string, DupContact> = {}
   if (ids.length) {
     for (let i = 0; i < ids.length; i += 200) {
+      const chunk = ids.slice(i, i + 200)
       const { data } = await db.from('contacts').select('*')
-        .eq('organization_id', orgId).in('id', ids.slice(i, i + 200))
+        .eq('organization_id', orgId).in('id', chunk)
+      // groupes (tags) de chaque fiche : visibles avant la fusion
+      const tagsByContact = new Map<string, { name: string; color: string }[]>()
+      const { data: tagRows } = await db.from('contact_tags')
+        .select('contact_id, tags(name, color)')
+        .eq('organization_id', orgId).in('contact_id', chunk)
+      for (const row of ((tagRows ?? []) as unknown as {
+        contact_id: string | null
+        tags: { name: string | null; color: string | null } | { name: string | null; color: string | null }[] | null
+      }[])) {
+        const ref = Array.isArray(row.tags) ? row.tags[0] : row.tags
+        if (!ref || !str(ref.name)) continue
+        const cid = str(row.contact_id)
+        const list = tagsByContact.get(cid) ?? []
+        list.push({ name: str(ref.name), color: str(ref.color) || '#2563eb' })
+        tagsByContact.set(cid, list)
+      }
       for (const c of ((data ?? []) as unknown as DbContact[])) {
-        const entry = byContactId.get(str(c.id)) ?? { ph: null, emails: [] }
+        const entry = byContactId.get(str(c.id)) ?? { ph: null, phones: [], emails: [] }
         contacts[str(c.id)] = {
           fullName: c.full_name,
           company: c.company,
@@ -152,6 +177,9 @@ export async function dupDetectionData(orgId: string): Promise<{
           source: c.source,
           countryName: c.country_name,
           city: c.city,
+          // numéro principal en tête : on voit immédiatement ce qui est fusionné
+          phones: [...entry.phones].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)),
+          tags: tagsByContact.get(str(c.id)) ?? [],
           emails: entry.emails,
         }
       }
@@ -166,11 +194,19 @@ export async function mapData(orgId: string): Promise<{
   byCountry: { iso2: string; name: string; n: number }[]
   byCity: { name: string; country_iso2: string; n: number }[]
   sources: string[]
+  /** pays déduit de l'indicatif du téléphone principal (couleur de la carte) */
+  byPhoneCountry: { iso2: string; callingCode: string; name: string; n: number; invalid: number }[]
 }> {
   const db = serviceDb()
-  if (!db) return { byCountry: [], byCity: [], sources: [] }
-  const { data } = await db.from('contacts').select('country_iso2, city')
-    .eq('organization_id', orgId).is('merged_into', null).limit(10000)
+  if (!db) return { byCountry: [], byCity: [], sources: [], byPhoneCountry: [] }
+  const [contactsRes, phonesRes, { sources }] = await Promise.all([
+    db.from('contacts').select('country_iso2, city')
+      .eq('organization_id', orgId).is('merged_into', null).limit(10000),
+    db.from('contact_phones').select('country_code, is_valid, is_primary')
+      .eq('organization_id', orgId).eq('is_primary', true).limit(10000),
+    contactsFiltersData(orgId),
+  ])
+  const data = contactsRes.data
   const countryCount = new Map<string, number>()
   const cityCount = new Map<string, { country_iso2: string; n: number }>()
   for (const c of ((data ?? []) as unknown as { country_iso2: string | null; city: string | null }[])) {
@@ -190,8 +226,35 @@ export async function mapData(orgId: string): Promise<{
   const byCity = [...cityCount.entries()]
     .map(([key, v]) => ({ name: key.split('|')[0], country_iso2: v.country_iso2, n: v.n }))
     .sort((a, b) => b.n - a.n)
-  const { sources } = await contactsFiltersData(orgId)
-  return { byCountry, byCity, sources }
+
+  // Comptage par indicatif du téléphone principal : provenance réelle des numéros
+  const phoneCount = new Map<string, { iso2: string; n: number; invalid: number }>()
+  for (const p of ((phonesRes.data ?? []) as unknown as { country_code: string | null; is_valid: boolean | null; is_primary: boolean | null }[])) {
+    const iso = str(p.country_code).toUpperCase()
+    if (!iso) continue // inconnu : non projetable
+    const cur = phoneCount.get(iso) ?? { iso2: iso, n: 0, invalid: 0 }
+    cur.n++
+    if (!p.is_valid) cur.invalid++
+    phoneCount.set(iso, cur)
+  }
+  const CALLING: Record<string, string> = {
+    CM: '237', BF: '226', BJ: '229', CI: '225', GA: '241', CG: '242', CF: '236', TD: '235',
+    TG: '228', ML: '223', NE: '227', SN: '221', GM: '220', CD: '243', FR: '33', BE: '32',
+    CH: '41', CA: '1', US: '1', GB: '44', DE: '49', ES: '34', IT: '39', NL: '31', NG: '234',
+    GH: '233', MA: '212', DZ: '213', TN: '216', ZA: '27', KE: '254', AE: '971', IN: '91',
+    CN: '86', BR: '55', PT: '351', LU: '352', RU: '7', TR: '90', MX: '52', AU: '61',
+  }
+  const byPhoneCountry = [...phoneCount.entries()]
+    .map(([iso2, v]) => ({
+      iso2,
+      callingCode: CALLING[iso2] ?? '?',
+      name: countryLabel(iso2),
+      n: v.n,
+      invalid: v.invalid,
+    }))
+    .sort((a, b) => b.n - a.n)
+
+  return { byCountry, byCity, sources, byPhoneCountry }
 }
 
 /** Petite aide pour formater des lignes d'historique. */

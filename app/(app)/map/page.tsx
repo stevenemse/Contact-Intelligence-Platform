@@ -8,18 +8,18 @@ import WorldMap from '@/components/world-map'
 
 export default async function MapPage() {
   const ctx = await requireOrg()
-  const { byCountry, byCity, sources } = await mapData(ctx.orgId)
+  const { byPhoneCountry, byCity } = await mapData(ctx.orgId)
 
   return (
     <div className="p-4 md:p-8 space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Carte mondiale</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Volume de contacts par pays · {byCountry.length} pays
+          Provenance des numéros par indicatif · {byPhoneCountry.length} pays détecté(s)
         </p>
       </div>
 
-      <WorldMap byCountry={byCountry} byCity={byCity} sources={sources} />
+      <WorldMap byPhoneCountry={byPhoneCountry} byCity={byCity} />
     </div>
   )
 }

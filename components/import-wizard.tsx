@@ -135,7 +135,7 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
           <div className="border-2 border-dashed border-white/15 rounded-2xl p-10 text-center"
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) onFileChosen(f) }}>
-            <p className="text-lg font-semibold text-white/90">Glissez-déposez votre fichier CSV ici</p>
+            <p className="text-lg font-semibold text-[color:var(--text-primary)]">Glissez-déposez votre fichier CSV ici</p>
             <p className="text-sm text-[color:var(--text-secondary)] mt-1">ou</p>
             <input ref={fileRef} type="file" accept=".csv,text/csv" hidden
               onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileChosen(f) }} />

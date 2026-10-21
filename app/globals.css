@@ -216,7 +216,30 @@ html, body {
   background: var(--bg-base);
 }
 
+/* ── Topbar (visible mobile uniquement) ── */
+.app-topbar { display: none; }
+.topbar-left { display: flex; align-items: center; gap: 8px; }
+/* logo : marque seule, sans texte, sur mobile */
+.app-topbar .topbar-left a span { display: none; }
+
 @media (max-width: 900px) {
+  .app-topbar {
+    display: flex !important;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    height: 56px;
+    min-height: 56px;
+    padding: 0 14px 0 64px;
+  }
+  /* burger fixé devant la barre, à gauche du logo */
+  .mobile-burger {
+    top: 10px;
+    left: 12px;
+    width: 36px;
+    height: 36px;
+  }
   .sidebar {
     position: fixed;
     left: 0;
@@ -225,6 +248,7 @@ html, body {
     transform: translateX(-100%);
     transition: transform .25s var(--ease);
     box-shadow: var(--shadow-lg);
+    z-index: 40;
   }
   .sidebar.open { transform: translateX(0); }
   .sidebar-overlay {
@@ -264,6 +288,7 @@ html, body {
 }
 .kpi-card:hover::after { opacity: 1; }
 
+/* ── Nav glass ── */
 .glass-nav {
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(10px);
@@ -724,11 +749,11 @@ input[type="checkbox"], input[type="radio"] {
     align-items: center;
     justify-content: center;
     position: fixed;
-    top: 14px;
-    left: 14px;
+    top: 10px;
+    left: 10px;
     z-index: 35;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 10px;
     border: 1px solid var(--border-hover);
     background: var(--bg-card);

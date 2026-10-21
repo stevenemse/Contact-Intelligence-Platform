@@ -15,8 +15,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <div className="app-shell">
       <Sidebar orgName={ctx.orgName} role={ctx.role} labels={t.nav} email={ctx.email} />
       <div className="main-area">
-        <header className="flex md:hidden items-center justify-between glass-nav" style={{ paddingLeft: 64, paddingRight: 16 }}>
-          <Logo />
+        <header className="glass-nav app-topbar">
+          <div className="topbar-left">
+            <Logo />
+          </div>
         </header>
         {children}
       </div>
