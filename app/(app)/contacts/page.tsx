@@ -9,6 +9,7 @@ import { contactsFiltersData } from '@/lib/supabase/page-data'
 import ContactsTable from '@/components/contacts-table'
 import Pager from '@/components/pager'
 import ContactsFilters from '@/components/contacts-filters'
+import PhoneFixer from '@/components/phone-fixer'
 
 export default async function ContactsPage({
   searchParams,
@@ -77,6 +78,8 @@ export default async function ContactsPage({
           Filtré sur la ville <span className="badge badge-teal">{city}</span>
         </p>
       )}
+
+      <PhoneFixer />
 
       <ContactsTable rows={rows.map(r => ({
         id: r.id,

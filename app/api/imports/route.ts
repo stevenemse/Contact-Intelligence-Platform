@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { getOrgContext, canWrite } from '@/lib/supabase/org-context'
 import { serviceDb } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/supabase/data'
+import { repairPhone } from '@/lib/contacts/fix-country-code'
 
 const mappingSchema = z.record(z.string(), z.string())
 const bodySchema = z.object({
@@ -19,7 +20,14 @@ function getBy(target: string | undefined, row: Record<string, unknown>): string
 }
 
 function normalizePhone(raw: string) {
-  const parsed = parsePhoneNumberFromString(raw)
+  let parsed = parsePhoneNumberFromString(raw)
+  // si le numéro brut est irréparable, on tente une réparation automatique
+  // (préfixe manquant, zéro de rappel, chiffre inséré/retiré — cf. fix-country-code)
+  if (!parsed) {
+    const asE164 = raw.startsWith('+') ? raw : `+${raw.replace(/\D+/g, '')}`
+    const fix = repairPhone(asE164)
+    if (fix) parsed = parsePhoneNumberFromString(fix.e164)
+  }
   if (!parsed) return null
   return {
     raw,
