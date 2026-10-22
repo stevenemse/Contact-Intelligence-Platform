@@ -61,16 +61,17 @@ export default function LandingPage() {
   ]
 
   const stats = [
-    { value: "6 étapes", label: "Wizard d'import guidé" },
-    { value: "+237", label: "Pays par défaut Cameroun" },
-    { value: "100%", label: "Multi-tenant & sécurisé" },
-    { value: "RLS", label: "Row-Level Security Supabase" },
+    { value: "20k", label: "lignes par import" },
+    { value: "14", label: "colonnes exportables" },
+    { value: "AND / OR / NOT", label: "règles de segmentation" },
+    { value: "1 clic", label: "pour passer à l’action" },
   ]
 
   return (
-    <main className="landing-hero-bg min-h-screen">
+    <main id="main-content" className="landing-hero-bg min-h-screen">
+      <a className="skip-link" href="#features">Aller au contenu</a>
       {/* Nav */}
-      <header style={{
+      <header className="landing-nav" style={{
         display:'flex',
         alignItems:'center',
         justifyContent:'space-between',
@@ -91,7 +92,7 @@ export default function LandingPage() {
             display:'grid',placeItems:'center',
             fontWeight:900,fontSize:13,color:'white',
           }}>CI</div>
-          <span style={{fontWeight:700,fontSize:15,color:'var(--text-primary)'}}>Contact Intelligence Platform</span>
+          <span style={{fontWeight:700,fontSize:15,color:'var(--text-primary)'}} translate="no">Contact Intelligence</span>
         </div>
         <nav style={{display:'flex',alignItems:'center',gap:8}}>
           <Link href="/login" className="btn btn-ghost btn-sm">Se connecter</Link>
@@ -119,7 +120,7 @@ export default function LandingPage() {
           color:'var(--text-primary)',
           marginTop:12,
         }}>
-          Centralisez, nettoyez et
+          Une base de contacts
           <br />
           <span style={{
             background:'linear-gradient(135deg, var(--brand), var(--brand-deep))',
@@ -127,7 +128,7 @@ export default function LandingPage() {
             WebkitTextFillColor:'transparent',
             backgroundClip:'text',
           }}>
-            exploitez vos contacts
+            prête à activer
           </span>
         </h1>
         <p className="fade-up delay-2" style={{
@@ -139,9 +140,8 @@ export default function LandingPage() {
           marginLeft:'auto',
           marginRight:'auto',
         }}>
-          Import CSV avec mapping assisté, normalisation internationale des numéros,
-          déduplication contrôlée, segments avancés AND/OR/NOT, carte mondiale
-          interactive et exports prêts pour votre CRM ou outil SMS.
+          Transformez des fichiers dispersés en une base fiable, segmentée et immédiatement exploitable.
+          Importez, corrigez, retrouvez les doublons et exportez uniquement les contacts dont vos équipes ont besoin.
         </p>
         <div className="fade-up delay-3" style={{marginTop:32,display:'flex',alignItems:'center',justifyContent:'center',gap:12,flexWrap:'wrap'}}>
           <Link href="/register" className="btn btn-primary" style={{padding:'12px 28px',fontSize:15}}>
@@ -150,6 +150,30 @@ export default function LandingPage() {
           <Link href="/login" className="btn btn-ghost" style={{padding:'12px 24px',fontSize:15}}>
             J&apos;ai déjà un compte
           </Link>
+        </div>
+      </section>
+
+      {/* Product preview */}
+      <section className="product-preview-wrap" aria-label="Aperçu du produit">
+        <div className="product-preview">
+          <div className="product-preview-topbar">
+            <div className="preview-dots" aria-hidden="true"><i /><i /><i /></div>
+            <span translate="no">Contact Intelligence</span>
+            <span className="preview-status"><b /> Base synchronisée</span>
+          </div>
+          <div className="product-preview-body">
+            <aside className="preview-sidebar" aria-hidden="true">
+              <div className="preview-logo">CI</div>
+              <span className="preview-line wide" /><span className="preview-line" /><span className="preview-line" /><span className="preview-line short" />
+              <div className="preview-sidebar-gap" />
+              <span className="preview-line" /><span className="preview-line short" />
+            </aside>
+            <div className="preview-content">
+              <div className="preview-heading"><span><small>Vue d’ensemble</small><strong>Bonjour, votre base est prête.</strong></span><em>7 juin 2025</em></div>
+              <div className="preview-kpis"><div><small>Contacts actifs</small><strong>1 768</strong><span>+12,4 %</span></div><div><small>Doublons à revoir</small><strong>24</strong><span className="warning">À traiter</span></div><div><small>Pays couverts</small><strong>18</strong><span>+3 ce mois</span></div></div>
+              <div className="preview-panels"><div className="preview-chart"><small>Répartition de la base</small><div className="preview-bars"><i /><i /><i /><i /><i /><i /><i /></div></div><div className="preview-list"><small>Derniers imports</small><span><b />clients_juin.csv <em>1 024 lignes</em></span><span><b />prospects_afrique.csv <em>744 lignes</em></span><span><b />evenement.xlsx <em>terminé</em></span></div></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -177,7 +201,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features grid */}
-      <section style={{maxWidth:1000,margin:'0 auto 80px',padding:'0 32px'}}>
+      <section id="features" style={{maxWidth:1000,margin:'0 auto 80px',padding:'0 32px',scrollMarginTop:88}}>
         <h2 style={{
           textAlign:'center',
           fontSize:22,fontWeight:800,
@@ -227,7 +251,7 @@ export default function LandingPage() {
         fontSize:12.5,
         color:'var(--text-muted)',
       }}>
-        Contact Intelligence Platform — préparez vos données, vos outils de campagne restent maîtres de l&apos;envoi.
+        Contact Intelligence — préparez vos données, vos outils de campagne restent maîtres de l&apos;envoi.
       </footer>
     </main>
   )

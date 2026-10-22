@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   const org = ctx.orgId
 
   // ── sélection des contacts ────────────────────────────────────────────────
-  let rows: { id: string; data: Record<string, unknown> }[] = []
+  const rows: { id: string; data: Record<string, unknown> }[] = []
   if (body.scope === 'segment' && body.segmentId) {
     const { data: seg } = await db.from('segments').select('rules')
       .eq('organization_id', org).eq('id', body.segmentId).maybeSingle()

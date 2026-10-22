@@ -39,7 +39,10 @@ export default function PhoneFixer() {
     } catch { /* silencieux : bandeau optionnel */ }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load() }, 0)
+    return () => window.clearTimeout(timer)
+  }, [load])
 
   async function apply() {
     if (!data || selected.size === 0) return
@@ -80,7 +83,7 @@ export default function PhoneFixer() {
         <div>
           <h3 className="font-bold text-sm">🔧 Correcteur de numéros</h3>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {data.stats.fixable} numéro(s) réparables selon l'indicatif (sur {data.stats.total} invalide(s))
+            {data.stats.fixable} numéro(s) réparables selon l&apos;indicatif (sur {data.stats.total} invalide(s))
           </p>
         </div>
         <div className="flex gap-2">

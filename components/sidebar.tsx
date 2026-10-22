@@ -3,9 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import type { Dictionary } from '@/lib/i18n/dictionaries'
-
-type Labels = Dictionary['nav']
+import { useI18n } from '@/lib/i18n/i18n-provider'
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────
 function IconDashboard() {
@@ -138,29 +136,33 @@ const ROLE_COLORS: Record<string, string> = {
   viewer:  '',
 }
 
-export default function Sidebar({ orgName, role, labels, email }: {
+export default function Sidebar({ orgName, role, email }: {
   orgName: string
   role: string
-  labels: Labels
   email: string
 }) {
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [locale, setLocale] = useState<'fr' | 'en'>('fr')
+  const { locale, setLocale, t } = useI18n()
+  const labels = t.nav
 
   useEffect(() => {
     const saved = window.localStorage.getItem('locale') as 'fr' | 'en' | null
-    if (saved) setLocale(saved)
-  }, [])
+    if (saved === 'fr' || saved === 'en') setLocale(saved)
+  }, [setLocale])
 
   // fermer le drawer au changement de page
-  useEffect(() => { setOpen(false) }, [pathname])
+  useEffect(() => {
+    const timer = window.setTimeout(() => setOpen(false), 0)
+    return () => window.clearTimeout(timer)
+  }, [pathname])
 
   function toggleLocale() {
     const next = locale === 'fr' ? 'en' : 'fr'
     setLocale(next)
     window.localStorage.setItem('locale', next)
+    document.cookie = `locale=${next}; path=/; max-age=31536000; samesite=lax`
   }
 
   async function logout() {
@@ -216,7 +218,7 @@ export default function Sidebar({ orgName, role, labels, email }: {
         <IconBurger />
       </button>
 
-      <aside className={`sidebar ${open ? 'open' : ''}`}>
+      <aside className={`sidebar ${open ? 'open' : ''}`} aria-label={locale === 'fr' ? 'Navigation principale' : 'Main navigation'}>
         {/* Logo */}
         <div className="sidebar-logo">
           <Link href="/dashboard" className="flex items-center gap-2.5" onClick={() => setOpen(false)} style={{textDecoration:'none'}}>
@@ -250,6 +252,7 @@ export default function Sidebar({ orgName, role, labels, email }: {
                 key={href}
                 href={href}
                 className={`nav-item${active ? ' active' : ''}${sub ? ' nav-sub' : ''}`}
+                aria-current={active ? 'page' : undefined}
               >
                 {sub ? <span className="nav-sub-dot" /> : Icon ? <Icon /> : null}
                 <span>{label}</span>

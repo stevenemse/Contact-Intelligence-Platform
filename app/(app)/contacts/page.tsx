@@ -40,7 +40,7 @@ export default async function ContactsPage({
 
   // filtre ville (venant de la carte) : appliqué pendant le rendu sur la page courante
   let rows = rows0.rows
-  let total = rows0.total
+  const total = rows0.total
   if (city) {
     rows = rows.filter(r => (r.city ?? '') === city)
   }

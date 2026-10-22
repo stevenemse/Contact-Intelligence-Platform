@@ -18,7 +18,7 @@ export async function GET() {
     .eq('is_primary', true)
     .eq('is_valid', false)
     .limit(5000)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Analyse impossible.' }, { status: 500 })
 
   const rows = (data ?? []) as unknown as {
     id: string; contact_id: string; raw_phone: string | null; e164: string | null

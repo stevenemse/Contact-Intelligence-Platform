@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await createSsrClient()
-  if (!supabase) return NextResponse.json({ error: 'Supabase non configuré (lisez SUPABASE-SETUP.md)' }, { status: 503 })
+  if (!supabase) return NextResponse.json({ error: 'Service momentanément indisponible.' }, { status: 503 })
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: body.email.toLowerCase().trim(),

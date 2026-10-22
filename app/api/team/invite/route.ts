@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     status: 'pending',
     invited_by: ctx.userId,
   })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Invitation impossible.' }, { status: 500 })
 
   await logActivity(ctx.orgId, ctx.userId, 'team.invited', 'invite', email, { role: body.role })
   return NextResponse.json({ ok: true })

@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         country_code: p.country ?? null,
         is_valid: true,
       }).eq('id', f.phoneId).eq('organization_id', ctx.orgId)
-      if (error) errors.push(`${f.e164} : ${error.message}`)
+      if (error) errors.push(`${f.e164} : mise à jour impossible`)
       else applied++
     }))
   }

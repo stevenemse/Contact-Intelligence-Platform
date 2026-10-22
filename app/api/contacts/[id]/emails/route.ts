@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       is_valid: ok,
       is_primary: (count ?? 0) === 0,
     })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
     await logActivity(ctx.orgId, ctx.userId, 'contact.email_added', 'contact', id, { email })
     return NextResponse.json({ ok: true })
   }
@@ -48,12 +48,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: em } = await db.from('contact_emails').select('id, is_primary')
     .eq('organization_id', ctx.orgId).eq('id', body.emailId).eq('contact_id', id).maybeSingle()
   if (!em) return NextResponse.json({ error: 'Email introuvable' }, { status: 404 })
-  const { error } = await db.from('contact_emails').delete().eq('id', body.emailId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { error } = await db.from('contact_emails').delete()
+    .eq('organization_id', ctx.orgId).eq('contact_id', id).eq('id', body.emailId)
+  if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
   if (em.is_primary) {
     const { data: next } = await db.from('contact_emails').select('id')
       .eq('organization_id', ctx.orgId).eq('contact_id', id).limit(1).maybeSingle()
-    if (next) await db.from('contact_emails').update({ is_primary: true }).eq('id', next.id)
+    if (next) await db.from('contact_emails').update({ is_primary: true })
+      .eq('organization_id', ctx.orgId).eq('contact_id', id).eq('id', next.id)
   }
   await logActivity(ctx.orgId, ctx.userId, 'contact.email_removed', 'contact', id, {})
   return NextResponse.json({ ok: true })

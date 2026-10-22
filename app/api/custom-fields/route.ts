@@ -37,13 +37,13 @@ export async function POST(req: NextRequest) {
     const { error } = await db.from('custom_fields').insert({
       organization_id: ctx.orgId, label, key, type: body.type,
     })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
     await logActivity(ctx.orgId, ctx.userId, 'custom_field.created', 'custom_field', null, { label, key, type: body.type })
     return NextResponse.json({ ok: true, key })
   }
 
   const { error } = await db.from('custom_fields').delete().eq('organization_id', ctx.orgId).eq('id', body.fieldId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
   await logActivity(ctx.orgId, ctx.userId, 'custom_field.deleted', 'custom_field', body.fieldId, {})
   return NextResponse.json({ ok: true })
 }

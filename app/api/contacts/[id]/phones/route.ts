@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       is_valid: norm?.valid ?? false,
       is_primary: (count ?? 0) === 0,
     })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
     await logActivity(ctx.orgId, ctx.userId, 'contact.phone_added', 'contact', id, { phone: body.phone })
     return NextResponse.json({ ok: true })
   }
@@ -65,23 +65,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: ph } = await db.from('contact_phones').select('id, is_primary')
       .eq('organization_id', ctx.orgId).eq('id', body.phoneId).eq('contact_id', id).maybeSingle()
     if (!ph) return NextResponse.json({ error: 'Téléphone introuvable' }, { status: 404 })
-    const { error } = await db.from('contact_phones').delete().eq('id', body.phoneId)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const { error } = await db.from('contact_phones').delete()
+        .eq('organization_id', ctx.orgId).eq('contact_id', id).eq('id', body.phoneId)
+
+    if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
     // si c'était le principal, promouvoir le premier restant
     if (ph.is_primary) {
       const { data: next } = await db.from('contact_phones').select('id')
         .eq('organization_id', ctx.orgId).eq('contact_id', id).limit(1).maybeSingle()
-      if (next) await db.from('contact_phones').update({ is_primary: true }).eq('id', next.id)
+      if (next) await db.from('contact_phones').update({ is_primary: true })
+        .eq('organization_id', ctx.orgId).eq('contact_id', id).eq('id', next.id)
     }
     await logActivity(ctx.orgId, ctx.userId, 'contact.phone_removed', 'contact', id, {})
     return NextResponse.json({ ok: true })
   }
 
-  // primary
+  // primary : vérifier la cible avant de modifier l'état du contact
+  const { data: targetPhone } = await db.from('contact_phones').select('id')
+    .eq('organization_id', ctx.orgId).eq('contact_id', id).eq('id', body.phoneId).maybeSingle()
+  if (!targetPhone) return NextResponse.json({ error: 'Téléphone introuvable' }, { status: 404 })
   await db.from('contact_phones').update({ is_primary: false })
     .eq('organization_id', ctx.orgId).eq('contact_id', id)
-  const { error } = await db.from('contact_phones').update({ is_primary: true }).eq('id', body.phoneId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { error } = await db.from('contact_phones').update({ is_primary: true })
+    .eq('organization_id', ctx.orgId).eq('contact_id', id).eq('id', body.phoneId)
+  if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
   await logActivity(ctx.orgId, ctx.userId, 'contact.phone_primary', 'contact', id, {})
   return NextResponse.json({ ok: true })
 }

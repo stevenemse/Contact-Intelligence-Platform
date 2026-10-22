@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq('organization_id', ctx.orgId).eq('contact_id', id).eq('tag_id', body.tagId).maybeSingle()
   if (existing.data) {
     const { error } = await db.from('contact_tags').delete().eq('id', (existing.data as { id: string }).id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
     await logActivity(ctx.orgId, ctx.userId, 'contact.tag_removed', 'contact', id, { tagId: body.tagId })
     return NextResponse.json({ ok: true, attached: false })
   }
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { error } = await db.from('contact_tags').insert({
     organization_id: ctx.orgId, contact_id: id, tag_id: body.tagId,
   })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
   await logActivity(ctx.orgId, ctx.userId, 'contact.tag_added', 'contact', id, { tagId: body.tagId })
   return NextResponse.json({ ok: true, attached: true })
 }

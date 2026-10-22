@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const { error } = await db.from('organizations')
     .update({ name: body.name.trim() })
     .eq('id', ctx.orgId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Modification impossible.' }, { status: 500 })
 
   await logActivity(ctx.orgId, ctx.userId, 'settings.org_renamed', 'organization', ctx.orgId, { name: body.name.trim() })
   return NextResponse.json({ ok: true })

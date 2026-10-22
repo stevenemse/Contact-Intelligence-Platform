@@ -33,8 +33,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Vous ne pouvez pas vous retirer vous-même.' }, { status: 400 })
   }
 
-  const { error } = await db.from('memberships').delete().eq('id', body.memberId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { error } = await db.from('memberships').delete()
+    .eq('organization_id', ctx.orgId).eq('id', body.memberId)
+  if (error) return NextResponse.json({ error: 'Suppression impossible.' }, { status: 500 })
 
   await logActivity(ctx.orgId, ctx.userId, 'team.member_removed', 'member', body.memberId, {})
   return NextResponse.json({ ok: true })

@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
     if (contactsToInsert.length > 0) {
       const { data: inserted, error } = await db.from('contacts').insert(contactsToInsert.map(c => c.row)).select('id')
       if (error) {
-        report.errors.push({ row: i + 1, reason: `Lot SQL : ${error.message}` })
+        report.errors.push({ row: i + 1, reason: 'Lot SQL impossible' })
         continue
       }
       report.inserted += inserted?.length ?? 0

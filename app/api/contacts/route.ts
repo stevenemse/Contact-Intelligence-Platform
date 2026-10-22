@@ -23,7 +23,7 @@ export async function DELETE(req: NextRequest) {
   const ids = body.delete.ids
   // suppression en cascade des relations (FK on delete cascade)
   const { error } = await db.from('contacts').delete().eq('organization_id', ctx.orgId).in('id', ids)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Suppression impossible.' }, { status: 500 })
 
   await logActivity(ctx.orgId, ctx.userId, 'contacts.bulk_delete', 'contact', null, { count: ids.length })
   return NextResponse.json({ ok: true, count: ids.length })

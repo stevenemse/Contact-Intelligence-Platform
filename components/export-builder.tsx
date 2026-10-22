@@ -75,7 +75,6 @@ export default function ExportBuilder({
     const seg = segmentList.find(s => s.id === segmentId)
     if (!seg) return
     let cancelled = false
-    setCountLoading(true)
     fetch('/api/segments/count', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

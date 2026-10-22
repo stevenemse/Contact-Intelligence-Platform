@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const patch: Record<string, unknown> = { ...body, updated_at: new Date().toISOString() }
   const { error } = await db.from('contacts').update(patch).eq('organization_id', ctx.orgId).eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Modification impossible.' }, { status: 500 })
 
   // historique : champs modifiés (diff). Sera affiché sur la fiche du contact.
   const fields: Record<string, unknown> = {}

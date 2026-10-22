@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const { error } = await db.from('org_invites')
     .update({ status: 'revoked' })
     .eq('organization_id', ctx.orgId).eq('id', body.inviteId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Révocation impossible.' }, { status: 500 })
 
   await logActivity(ctx.orgId, ctx.userId, 'team.invite_revoked', 'invite', body.inviteId, {})
   return NextResponse.json({ ok: true })

@@ -46,13 +46,13 @@ export async function POST(req: NextRequest) {
       rules: body.rules,
       created_by: ctx.userId,
     }).select('id').single()
-    if (error || !seg) return NextResponse.json({ error: error?.message ?? 'Création impossible' }, { status: 500 })
+    if (error || !seg) return NextResponse.json({ error: 'Création impossible.' }, { status: 500 })
     await logActivity(ctx.orgId, ctx.userId, 'segment.created', 'segment', seg.id, { name: body.name.trim() })
     return NextResponse.json({ ok: true, id: seg.id })
   }
 
   const { error } = await db.from('segments').delete().eq('organization_id', ctx.orgId).eq('id', body.segmentId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Suppression impossible.' }, { status: 500 })
   await logActivity(ctx.orgId, ctx.userId, 'segment.deleted', 'segment', body.segmentId, {})
   return NextResponse.json({ ok: true })
 }

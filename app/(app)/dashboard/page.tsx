@@ -49,11 +49,14 @@ export default async function DashboardPage() {
     const { data: ph } = await db.from('contact_phones')
       .select('contact_id, is_primary, is_valid')
       .eq('organization_id', org)
+      .eq('is_primary', true)
       .limit(20000)
-    const merged = new Set(lite.map(c => str(c.id)))
+    const activeIds = new Set(lite.map(c => str(c.id)))
+    const seen = new Set<string>()
     for (const p of ((ph ?? []) as unknown as { contact_id: string; is_primary: boolean | null; is_valid: boolean | null }[])) {
-      if (!merged.has(str(p.contact_id))) continue
-      if (!p.is_primary) continue
+      const contactId = str(p.contact_id)
+      if (!activeIds.has(contactId) || seen.has(contactId)) continue
+      seen.add(contactId)
       if (p.is_valid === true) validPrimary++
       else invalidPrimary++
     }
@@ -120,9 +123,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="dashboard-header flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{t.dash.title}</h1>
+          <p className="eyebrow">Votre espace de pilotage</p>
+          <h1 className="display-1">{t.dash.title}</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             {ctx.orgName} · <TodayLabel locale="fr-FR" />
           </p>
@@ -133,10 +137,23 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      <section className="dashboard-welcome" aria-label="Actions rapides">
+        <div>
+          <span className="welcome-kicker">Prochaine étape</span>
+          <h2>Faites de votre base un avantage.</h2>
+          <p>Commencez par importer un fichier, puis laissez les outils de qualité vous guider.</p>
+        </div>
+        <div className="quick-actions">
+          <Link href="/imports/new" className="quick-action"><span className="quick-action-icon" aria-hidden="true">↑</span><span><strong>Importer une base</strong><small>CSV ou fichier tableur</small></span><span aria-hidden="true">→</span></Link>
+          <Link href="/duplicates" className="quick-action"><span className="quick-action-icon" aria-hidden="true">✦</span><span><strong>Revoir les doublons</strong><small>Garder une base propre</small></span><span aria-hidden="true">→</span></Link>
+          <Link href="/exports/new" className="quick-action"><span className="quick-action-icon" aria-hidden="true">↓</span><span><strong>Préparer un export</strong><small>Créer votre prochaine liste</small></span><span aria-hidden="true">→</span></Link>
+        </div>
+      </section>
+
       {/* 1. KPI */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         {kpis.map(k => (
-          <Link href={k.href} key={k.label} className="kpi-card hover:opacity-90">
+          <Link href={k.href} key={k.label} className="kpi-card dashboard-kpi hover:opacity-90">
             <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{k.label}</p>
             <p className="metric mt-1">{k.value.toLocaleString('fr-FR')}</p>
           </Link>
@@ -154,7 +171,8 @@ export default async function DashboardPage() {
           <ul className="space-y-1.5">
             {byPhoneCountry.slice(0, 10).map(p => (
               <li key={p.iso2} className="flex items-center gap-2.5 text-sm">
-                <span className="w-11 font-bold shrink-0">{toFlag(p.iso2)} +{p.callingCode}</span>
+                <span className="country-flag" title={p.name} aria-label={p.name}>{toFlag(p.iso2)}</span>
+                <span className="text-xs font-semibold shrink-0" style={{ color: 'var(--text-muted)' }}>+{p.callingCode}</span>
                 <span className="flex-1 truncate">{p.name}</span>
                 <div className="w-20 rounded-full h-2 shrink-0" style={{ background: '#e3e9e6' }}>
                   <div className="h-2 rounded-full" style={{ width: `${(p.n / maxN) * 100}%`, background: 'var(--brand)' }} />

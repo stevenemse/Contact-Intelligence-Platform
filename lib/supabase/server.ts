@@ -41,7 +41,7 @@ export async function createSsrClient(): Promise<SupabaseClient | null> {
 
 /** Client service-role pour les accès base de données (aucune RLS, autorisation applicative). */
 export function serviceDb(): ServiceClient | null {
-  if (!url || !serviceKey) return null
+  if (!url || !serviceKey || url.includes('VOTRE-') || SUPABASE_KEYS_PLACEHOLDER.some(k => serviceKey.includes(k))) return null
   return createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
     db: { schema: 'public' },

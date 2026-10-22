@@ -16,7 +16,21 @@ const Ctx = createContext<I18nCtx>({
 })
 
 export function I18nProvider({ children, initial }: { children: ReactNode; initial?: Locale }) {
-  const [locale, setLocale] = useState<Locale>(initial ?? DEFAULT_LOCALE)
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    if (initial) return initial
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('locale')
+      if (saved === 'fr' || saved === 'en') return saved
+    }
+    return DEFAULT_LOCALE
+  })
+  const setLocale = (next: Locale) => {
+    setLocaleState(next)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('locale', next)
+      document.cookie = `locale=${next}; path=/; max-age=31536000; samesite=lax`
+    }
+  }
   return (
     <Ctx.Provider value={{ locale, t: getDictionary(locale), setLocale }}>
       {children}

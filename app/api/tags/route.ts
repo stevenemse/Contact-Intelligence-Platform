@@ -31,13 +31,13 @@ export async function POST(req: NextRequest) {
     const { error } = await db.from('tags').insert({
       organization_id: ctx.orgId, name, color: body.color,
     })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
     await logActivity(ctx.orgId, ctx.userId, 'tag.created', 'tag', null, { name })
     return NextResponse.json({ ok: true })
   }
 
   const { error } = await db.from('tags').delete().eq('organization_id', ctx.orgId).eq('id', body.tagId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
   await logActivity(ctx.orgId, ctx.userId, 'tag.deleted', 'tag', body.tagId, {})
   return NextResponse.json({ ok: true })
 }

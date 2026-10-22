@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   const { error } = await db.from('memberships')
     .update({ role: body.newRole })
     .eq('organization_id', ctx.orgId).eq('id', body.memberId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Opération impossible.' }, { status: 500 })
 
   await logActivity(ctx.orgId, ctx.userId, 'team.role_changed', 'member', body.memberId, { newRole: body.newRole })
   return NextResponse.json({ ok: true })

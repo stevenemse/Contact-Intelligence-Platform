@@ -1,19 +1,21 @@
 import type { ReactNode } from 'react'
+import { cookies } from 'next/headers'
 
 // route bloquante (session + cookies) : validation instant-navigation désactivée
 export const instant = false
 import { requireOrg } from '@/lib/supabase/org-context'
-import { getDictionary } from '@/lib/i18n/dictionaries'
+import { getDictionary, type Locale } from '@/lib/i18n/dictionaries'
 import Sidebar from '@/components/sidebar'
 import Logo from '@/components/logo'
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const ctx = await requireOrg()
-  const t = getDictionary('fr')
+  const locale = (await cookies()).get('locale')?.value === 'en' ? 'en' : 'fr'
+  getDictionary(locale as Locale)
 
   return (
     <div className="app-shell">
-      <Sidebar orgName={ctx.orgName} role={ctx.role} labels={t.nav} email={ctx.email} />
+      <Sidebar orgName={ctx.orgName} role={ctx.role} email={ctx.email} />
       <div className="main-area">
         <header className="glass-nav app-topbar">
           <div className="topbar-left">
