@@ -19,8 +19,6 @@ export default function ContactDetail({ orgId: _orgId, contactId, phones, emails
 }) {
   void _orgId
   const router = useRouter()
-  const [phoneList, setPhoneList] = useState<Phone[]>(phones)
-  const [emailList, setEmailList] = useState<Email[]>(emails)
   const [newPhone, setNewPhone] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -124,7 +122,7 @@ export default function ContactDetail({ orgId: _orgId, contactId, phones, emails
       <div>
         <h3 className="font-bold mb-2">Téléphones</h3>
         <ul className="space-y-1.5">
-          {phoneList.map(p => {
+          {phones.map(p => {
             const pv = preview(p.rawPhone)
             return (
               <li key={p.id} className="flex items-center gap-2 text-sm">
@@ -137,7 +135,7 @@ export default function ContactDetail({ orgId: _orgId, contactId, phones, emails
               </li>
             )
           })}
-          {phoneList.length === 0 && <li className="text-sm text-[color:var(--text-muted)]">Aucun numéro</li>}
+          {phones.length === 0 && <li className="text-sm text-[color:var(--text-muted)]">Aucun numéro</li>}
         </ul>
         <div className="mt-2 flex gap-2">
           <input className="input" value={newPhone} onChange={(e) => setNewPhone(e.target.value)}
@@ -154,7 +152,7 @@ export default function ContactDetail({ orgId: _orgId, contactId, phones, emails
       <div>
         <h3 className="font-bold mb-2">Emails</h3>
         <ul className="space-y-1.5">
-          {emailList.map(e => (
+          {emails.map(e => (
             <li key={e.id} className="flex items-center gap-2 text-sm">
               <span className={`w-2 h-2 rounded-full shrink-0 ${e.isValid ? 'bg-green-500' : 'bg-red-400'}`} />
               <span>{e.email}</span>
@@ -162,7 +160,7 @@ export default function ContactDetail({ orgId: _orgId, contactId, phones, emails
               <button onClick={() => removeEmail(e.id)} className="ml-auto text-xs text-[color:var(--text-muted)] hover:text-[color:var(--danger)]">×</button>
             </li>
           ))}
-          {emailList.length === 0 && <li className="text-sm text-[color:var(--text-muted)]">Aucun email</li>}
+          {emails.length === 0 && <li className="text-sm text-[color:var(--text-muted)]">Aucun email</li>}
         </ul>
         <div className="mt-2 flex gap-2">
           <input className="input" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}

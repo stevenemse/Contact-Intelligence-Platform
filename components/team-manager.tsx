@@ -15,6 +15,7 @@ export default function TeamManager({ isAdmin, currentUserId, currentRole, membe
   members: Member[]
   invites: Invite[]
 }) {
+  void currentRole
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('member')

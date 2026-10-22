@@ -78,6 +78,7 @@ export default function WorldMapSvg({ countries, height = 300, selectedIso, onSe
   onSelect?: (iso2: string) => void
   maxN?: number
 }) {
+  void height // la carte reste 100 % largeur, ratio imposé par le viewBox
   const paths = useMemo(() => getPaths(), [])
   const [hover, setHover] = useState<{ iso2: string; name: string; x: number; y: number } | null>(null)
 

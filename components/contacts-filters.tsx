@@ -50,7 +50,7 @@ export default function ContactsFilters({ countries, sources, tags, country, sou
         <option value="valid">Numéros valides</option>
         <option value="invalid">Numéros invalides</option>
       </select>
-      <button onClick={() => { setQLocal(''); const sp = new URLSearchParams(); router.push(pathname) }}
+      <button onClick={() => { setQLocal(''); router.push(pathname) }}
         className="btn btn-ghost text-xs">Réinitialiser</button>
     </div>
   )

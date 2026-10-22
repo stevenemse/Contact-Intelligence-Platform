@@ -11,6 +11,7 @@ export default function SettingsForm({ isOwner, isAdmin, orgName, plan, quota, c
   quota: number
   contactCount: number
 }) {
+  void isOwner
   const router = useRouter()
   const [name, setName] = useState(orgName)
   const [saved, setSaved] = useState(false)
