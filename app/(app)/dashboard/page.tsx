@@ -122,7 +122,7 @@ export default async function DashboardPage() {
   ]
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="dashboard-page p-4 md:p-8 space-y-6">
       <div className="dashboard-header flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">Votre espace de pilotage</p>

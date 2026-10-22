@@ -144,6 +144,9 @@ export default function Sidebar({ orgName, role, email }: {
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() =>
+    typeof window !== 'undefined' && window.localStorage.getItem('sidebar-collapsed') === 'true'
+  )
   const { locale, setLocale, t } = useI18n()
   const labels = t.nav
 
@@ -218,25 +221,24 @@ export default function Sidebar({ orgName, role, email }: {
         <IconBurger />
       </button>
 
-      <aside className={`sidebar ${open ? 'open' : ''}`} aria-label={locale === 'fr' ? 'Navigation principale' : 'Main navigation'}>
+      <aside className={`sidebar ${open ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`} aria-label={locale === 'fr' ? 'Navigation principale' : 'Main navigation'}>
         {/* Logo */}
         <div className="sidebar-logo">
           <Link href="/dashboard" className="flex items-center gap-2.5" onClick={() => setOpen(false)} style={{textDecoration:'none'}}>
             <div className="sidebar-logo-mark">CI</div>
-            <div style={{fontSize:13.5, fontWeight:800, color:'#fff', letterSpacing:'-.01em'}}>
+            <div className="sidebar-brand-name" style={{fontSize:13.5, fontWeight:800, color:'#fff', letterSpacing:'-.01em'}}>
               Contact Intelligence
             </div>
           </Link>
+          <button className="sidebar-collapse" onClick={() => setCollapsed(value => { const next = !value; window.localStorage.setItem('sidebar-collapsed', String(next)); return next })} aria-label={collapsed ? 'Développer la navigation' : 'Réduire la navigation'} aria-pressed={collapsed}>
+            {collapsed ? '›' : '‹'}
+          </button>
         </div>
 
         {/* Org info */}
-        <div style={{padding:'12px 18px 10px',borderBottom:'1px solid var(--sidebar-border)'}}>
-          <div style={{fontSize:10.5,fontWeight:700,color:'rgba(167,187,180,.75)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:4}}>
-            Espace de travail
-          </div>
-          <div style={{fontSize:13.5,fontWeight:600,color:'#e2ece9',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-            {orgName || '—'}
-          </div>
+        <div className="sidebar-workspace" style={{padding:'12px 18px 10px',borderBottom:'1px solid var(--sidebar-border)'}}>
+          <div style={{fontSize:10.5,fontWeight:700,color:'rgba(167,187,180,.75)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:4}}>Espace de travail</div>
+          <div style={{fontSize:13.5,fontWeight:600,color:'#e2ece9',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{orgName || '—'}</div>
         </div>
 
         {/* Nav */}

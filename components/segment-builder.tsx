@@ -49,6 +49,7 @@ export default function SegmentBuilder({ tags, sources, countries, cities, orgId
   /** Rendu compact sans cartes, pour un formulaire hôte (export). */
   embedded?: boolean
 }) {
+  void orgId
   const router = useRouter()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
