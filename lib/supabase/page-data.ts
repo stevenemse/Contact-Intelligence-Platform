@@ -133,13 +133,17 @@ export async function segmentBuilderData(orgId: string): Promise<{
   }
 }
 
-export type DupGroup = { normalized_phone: string; n: number; contact_ids: string[] }
+export type DupReason = { label: string; points: number; tone: 'positive' | 'warning' }
+export type DupConfidence = 'quasi_certain' | 'probable' | 'a_verifier'
+export type DupScore = { score: number; confidence: DupConfidence; reasons: DupReason[] }
+export type DupGroup = { normalized_phone: string; n: number; contact_ids: string[]; score: DupScore }
 export type DupPhone = { phone: string; isPrimary: boolean; isValid: boolean }
 export type DupContact = {
   fullName: string | null
   company: string | null
   jobTitle: string | null
   source: string | null
+  countryIso2: string | null
   countryName: string | null
   city: string | null
   phones: DupPhone[]
@@ -148,9 +152,69 @@ export type DupContact = {
 }
 
 /**
- * Groupes de doublons : numéros primaires normalisés partagés par 2+ contacts actifs.
- * Renvoie aussi les fiches affichées (nom, entreprise, emails...).
+ * Groupes de doublons : le téléphone partagé crée le groupe, puis les autres
+ * champs classent prudemment la correspondance. Aucune fusion n'est automatique.
  */
+function comparable(value: string | null | undefined): string {
+  return String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function similarity(a: string, b: string): number {
+  if (!a || !b) return 0
+  if (a === b) return 1
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    let diagonal = prev[0]
+    prev[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const old = prev[j]
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1))
+      diagonal = old
+    }
+  }
+  return 1 - prev[b.length] / Math.max(a.length, b.length)
+}
+
+function scoreDuplicatePair(a: DupContact, b: DupContact): DupScore {
+  const reasons: DupReason[] = [{ label: 'Téléphone normalisé identique', points: 50, tone: 'positive' }]
+  let score = 50
+  const emailsA = new Set((a.emails ?? []).map(e => comparable(e.email)))
+  const emailMatch = (b.emails ?? []).some(e => emailsA.has(comparable(e.email)) && comparable(e.email))
+  if (emailMatch) { score += 35; reasons.push({ label: 'Email identique', points: 35, tone: 'positive' }) }
+
+  const nameSimilarity = similarity(comparable(a.fullName), comparable(b.fullName))
+  if (nameSimilarity >= 0.88) { score += 25; reasons.push({ label: 'Noms très proches', points: 25, tone: 'positive' }) }
+  else if (nameSimilarity >= 0.72) { score += 15; reasons.push({ label: 'Noms proches', points: 15, tone: 'positive' }) }
+
+  const companySimilarity = similarity(comparable(a.company), comparable(b.company))
+  if (companySimilarity >= 0.88) { score += 15; reasons.push({ label: 'Entreprises très proches', points: 15, tone: 'positive' }) }
+  else if (companySimilarity >= 0.72) { score += 8; reasons.push({ label: 'Entreprises proches', points: 8, tone: 'positive' }) }
+
+  const sameLocation = Boolean(comparable(a.city) && comparable(a.city) === comparable(b.city)) ||
+    Boolean(comparable(a.countryIso2) && comparable(a.countryIso2) === comparable(b.countryIso2))
+  if (sameLocation) { score += 5; reasons.push({ label: 'Même ville ou pays', points: 5, tone: 'positive' }) }
+
+  const contradictory = Boolean(comparable(a.fullName) && comparable(b.fullName) && nameSimilarity < 0.3) ||
+    Boolean(emailMatch === false && (a.emails ?? []).length > 0 && (b.emails ?? []).length > 0 &&
+      ![...emailsA].some(Boolean))
+  if (contradictory) { score -= 10; reasons.push({ label: 'Données contradictoires', points: -10, tone: 'warning' }) }
+
+  const finalScore = Math.max(0, Math.min(100, score))
+  const confidence: DupConfidence = finalScore >= 90 ? 'quasi_certain' : finalScore >= 75 ? 'probable' : 'a_verifier'
+  return { score: finalScore, confidence, reasons }
+}
+
+function scoreDuplicateGroup(ids: string[], contacts: Record<string, DupContact>): DupScore {
+  const pairs: DupScore[] = []
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    const a = contacts[ids[i]], b = contacts[ids[j]]
+    if (a && b) pairs.push(scoreDuplicatePair(a, b))
+  }
+  return pairs.sort((a, b) => b.score - a.score)[0] ?? {
+    score: 50, confidence: 'a_verifier',
+    reasons: [{ label: 'Téléphone normalisé identique', points: 50, tone: 'positive' }],
+  }
+}
 export async function dupDetectionData(orgId: string): Promise<{
   groups: DupGroup[]
   contacts: Record<string, DupContact>
@@ -189,7 +253,12 @@ export async function dupDetectionData(orgId: string): Promise<{
   }
   const groups: DupGroup[] = [...phoneMap.entries()]
     .filter(([, ids]) => ids.length > 1)
-    .map(([normalized_phone, ids]) => ({ normalized_phone, n: ids.length, contact_ids: ids }))
+    .map(([normalized_phone, ids]) => ({
+      normalized_phone,
+      n: ids.length,
+      contact_ids: ids,
+      score: { score: 50, confidence: 'a_verifier' as DupConfidence, reasons: [{ label: 'Téléphone normalisé identique', points: 50, tone: 'positive' as const }] },
+    }))
     .sort((a, b) => b.n - a.n)
 
   const ids = [...new Set(groups.flatMap(g => g.contact_ids))]
@@ -222,6 +291,7 @@ export async function dupDetectionData(orgId: string): Promise<{
           company: c.company,
           jobTitle: c.job_title,
           source: c.source,
+          countryIso2: c.country_iso2,
           countryName: c.country_name,
           city: c.city,
           // numéro principal en tête : on voit immédiatement ce qui est fusionné
@@ -232,6 +302,7 @@ export async function dupDetectionData(orgId: string): Promise<{
       }
     }
   }
+  for (const group of groups) group.score = scoreDuplicateGroup(group.contact_ids, contacts)
   const totalDupes = groups.reduce((acc, g) => acc + g.n - 1, 0)
   return { groups, contacts, totalDupes }
 }

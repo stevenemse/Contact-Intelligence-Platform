@@ -1,6 +1,5 @@
 import 'server-only'
 import { serviceDb } from './server'
-import { canAdmin, canWrite, type OrgCtx } from './org-context'
 
 // ── Types publics (mêmes formes que la version Firestore, camelCase) ────────
 
