@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
         return request.cookies.getAll()
       },
       setAll(toSet) {
-        for (const { name, value, options } of toSet) {
+        for (const { name, value } of toSet) {
           request.cookies.set(name, value)
         }
         response = NextResponse.next({ request })

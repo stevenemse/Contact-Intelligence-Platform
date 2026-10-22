@@ -46,3 +46,9 @@ design/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/freebuff-sites-build/
+/.open-next/
+/.wrangler/
+
+# pièces jointes de chat (non projet)
+/.cloud-attachments/
