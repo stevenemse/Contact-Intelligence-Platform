@@ -809,53 +809,6 @@ input[type="checkbox"], input[type="radio"] {
 .matrix-cell-yes { color: var(--brand-deep); font-weight: 700; }
 .matrix-cell-no  { color: var(--text-faint); }
 
-/* ── Dashboard dark cartographic direction ── */
-.dashboard-page {
-  background: #0a1110;
-  color: #e8f1ee;
-  min-height: 100vh;
-}
-.dashboard-page .dashboard-header .display-1,
-.dashboard-page .title-bloc,
-.dashboard-page h1,
-.dashboard-page h2,
-.dashboard-page h3,
-.dashboard-page strong,
-.dashboard-page td,
-.dashboard-page .metric { color: #e8f1ee; }
-.dashboard-page .eyebrow,
-.dashboard-page .welcome-kicker { color: #61d5c2; }
-.dashboard-page .dashboard-header p,
-.dashboard-page .subtitle-page,
-.dashboard-page .section-title,
-.dashboard-page th,
-.dashboard-page td.text-xs,
-.dashboard-page [style*="--text-muted"] { color: #8da7a1 !important; }
-.dashboard-page .kpi-card,
-.dashboard-page .dashboard-welcome {
-  background: #101b19;
-  border-color: #203632;
-  box-shadow: 0 10px 28px rgba(0,0,0,.16);
-}
-.dashboard-page .dashboard-welcome {
-  background: linear-gradient(110deg, #102d29, #101b19 68%);
-  border-color: #25574e;
-}
-.dashboard-page .quick-action { background: #14231f; border-color: #285148; color: #e8f1ee; }
-.dashboard-page .quick-action:hover { border-color: #48c8b4; }
-.dashboard-page .quick-action-icon { background: #193f37; color: #70ddca; }
-.dashboard-page .kpi-card:hover { border-color: #397267; }
-.dashboard-page .data-table th { background: #14211f; border-color: #203632; }
-.dashboard-page .data-table td { border-color: #1c302b; }
-.dashboard-page .data-table tr:hover td { background: #14231f; }
-.dashboard-page .badge { background: #18352f; border-color: #285148; color: #b9e7de; }
-.dashboard-page .btn-ghost { background: #14231f; border-color: #31574f; color: #d8ebe7; }
-.dashboard-page .btn-ghost:hover { background: #1a302b; border-color: #4b8e80; color: #fff; }
-.dashboard-page .dashboard-kpi .metric { color: #ffffff; }
-.dashboard-page .dashboard-kpi::after { background: #45c9b4; }
-.dashboard-page a { color: #70d8c7; }
-.dashboard-page .dashboard-header a.btn-primary { color: #fff; }
-
 /* ── Coral direction overrides ── */
 .landing-hero-bg {
   background:
@@ -948,10 +901,10 @@ input[type="checkbox"], input[type="radio"] {
   border-radius: 50%;
   background: var(--bg-sunken);
   border: 1px solid var(--border);
-  font-size: 18px;
   line-height: 1;
   overflow: hidden;
 }
+.country-flag > .fi { width: 28px; height: 28px; border-radius: 50%; }
 
 /* ── Formulaires : alignement et lisibilité ── */
 .form-grid {
