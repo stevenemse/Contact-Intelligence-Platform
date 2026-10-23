@@ -5,6 +5,7 @@ import { getOrgContext, canWrite } from '@/lib/supabase/org-context'
 import { serviceDb } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/supabase/data'
 import { repairPhone } from '@/lib/contacts/fix-country-code'
+import { quotaForPlan } from '@/lib/plans'
 
 const mappingSchema = z.record(z.string(), z.string())
 const bodySchema = z.object({
@@ -57,6 +58,18 @@ export async function POST(req: NextRequest) {
   const org = ctx.orgId
   const mapping = body.mapping
 
+  // Garde de quota : le plan limite le volume de contacts de l'organisation
+  const { count: currentCount } = await db.from('contacts')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', org)
+  const quota = Math.max(ctx.quota, quotaForPlan(ctx.orgPlan))
+  if ((currentCount ?? 0) >= quota) {
+    return NextResponse.json(
+      { error: 'QUOTA_REACHED', quota, plan: ctx.orgPlan },
+      { status: 402 },
+    )
+  }
+
   // création de la ligne import
   const { data: imp, error: impErr } = await db.from('import_batches').insert({
     organization_id: org,
@@ -79,7 +92,7 @@ export async function POST(req: NextRequest) {
   type PhoneRow = { normalized_phone: string | null }
   type EmailRow = { email: string | null }
   const seenPhones = new Set(
-    ((existingPhones.data ?? []) as unknown as PhoneRow[]).map(p => p.normalized_phone ?? '')
+    ((existingPhones.data ?? []) as unknown) as PhoneRow[]).map(p => p.normalized_phone ?? '')
   )
   const seenEmails = new Set(
     ((existingEmails.data ?? []) as unknown as EmailRow[]).map(e => (e.email ?? '').toLowerCase())
