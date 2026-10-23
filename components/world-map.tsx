@@ -52,7 +52,7 @@ export default function WorldMap({ byPhoneCountry, byCity }: {
           <div className="text-sm mb-3 flex gap-4 flex-wrap">
             <span><b>{selected.n}</b> numéro(s)</span>
             {selected.invalid > 0 && (
-              <span style={{ color: '#dc4c4c' }}>
+              <span style={{ color: 'var(--danger)' }}>
                 {selected.invalid} invalide(s) —
                 <Link href="/contacts?phoneValid=invalid" className="underline ml-1">les corriger</Link>
               </span>
@@ -91,7 +91,7 @@ export default function WorldMap({ byPhoneCountry, byCity }: {
               >
                 <span className="flex items-center gap-1.5 w-14 shrink-0 font-bold"><Flag iso2={p.iso2} size={14} /> +{p.callingCode}</span>
                 <span className="flex-1 truncate">{p.name}</span>
-                <div className="w-32 rounded-full h-2" style={{ background: '#e3e9e6' }}>
+                <div className="w-32 rounded-full h-2" style={{ background: 'var(--track)' }}>
                   <div className="h-2 rounded-full" style={{ width: `${(p.n / maxN) * 100}%`, background: 'var(--brand)' }} />
                 </div>
                 <span className="w-10 text-right" style={{ color: 'var(--text-muted)' }}>{p.n}</span>
