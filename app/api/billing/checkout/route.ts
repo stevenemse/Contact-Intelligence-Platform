@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const planId = String((body as { plan?: string }).plan ?? '')
+  const billing = String((body as { billing?: string }).billing ?? 'monthly')
 
   if (!isPaidPlan(planId)) {
     return NextResponse.json({ error: 'Plan non souscriptible en ligne' }, { status: 400 })
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     subscription_data: { metadata: { organization_id: ctx.orgId, plan: planId } },
-    metadata: { organization_id: ctx.orgId, plan: planId },
+    metadata: { organization_id: ctx.orgId, plan: planId, billing },
     success_url: `${origin}/settings/billing?success=1`,
     cancel_url: `${origin}/settings/billing?canceled=1`,
     allow_promotion_codes: true,
