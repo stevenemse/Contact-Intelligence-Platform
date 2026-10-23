@@ -174,7 +174,7 @@ export default async function DashboardPage() {
                 <span className="country-flag" title={p.name} aria-label={p.name}><Flag iso2={p.iso2} size={28} /></span>
                 <span className="text-xs font-semibold shrink-0" style={{ color: 'var(--text-muted)' }}>+{p.callingCode}</span>
                 <span className="flex-1 truncate">{p.name}</span>
-                <div className="w-20 rounded-full h-2 shrink-0" style={{ background: '#e3e9e6' }}>
+                <div className="w-20 rounded-full h-2 shrink-0" style={{ background: 'var(--track)' }}>
                   <div className="h-2 rounded-full" style={{ width: `${(p.n / maxN) * 100}%`, background: 'var(--brand)' }} />
                 </div>
                 <span className="w-9 text-right shrink-0" style={{ color: 'var(--text-muted)' }}>{p.n}</span>
