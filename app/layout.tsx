@@ -16,9 +16,15 @@ export const metadata: Metadata = {
   keywords: ["CRM", "contacts", "import CSV", "déduplication", "Cameroun", "Afrique"],
 };
 
+// Applique le thème mémorisé avant la première peinture (aucun flash).
+const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.dataset.theme=t}}catch(e){}`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className={inter.variable}>
+    <html lang="fr" data-theme="light" suppressHydrationWarning className={inter.variable}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body style={{ fontFamily: "var(--font-inter, 'Inter', system-ui, sans-serif)" }}>
         <I18nProvider>{children}</I18nProvider>
       </body>
