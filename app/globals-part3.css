@@ -1,0 +1,319 @@
+.landing-nav {
+  padding-left: 32px;
+  padding-right: 32px;
+}
+
+@media (max-width: 640px) {
+  .landing-nav {
+    height: auto;
+    min-height: 64px;
+    padding: 12px 16px;
+    gap: 12px;
+    align-items: center;
+  }
+  .landing-nav > div:first-child span {
+    max-width: 120px;
+    line-height: 1.25;
+  }
+  .landing-nav nav {
+    flex-shrink: 0;
+    gap: 6px;
+  }
+  .landing-nav nav .btn {
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+  .landing-nav nav .btn-ghost {
+    display: none;
+  }
+}
+
+.landing-hero-bg {
+  position: relative;
+  background:
+    radial-gradient(ellipse 70% 55% at 12% 8%, rgba(255, 138, 114, .28) 0%, transparent 62%),
+    radial-gradient(ellipse 70% 60% at 88% 22%, rgba(247, 184, 91, .22) 0%, transparent 60%),
+    linear-gradient(180deg, #fff8f5 0%, #fdf7f3 45%, var(--bg-base) 100%);
+}
+.landing-hero-bg::before { content: ''; position: absolute; inset: 64px 0 auto; height: 560px; pointer-events: none; background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.9), transparent 48%); }
+.landing-hero-bg > * { position: relative; }
+.landing-hero-bg .landing-nav { background: rgba(255, 248, 245, .78) !important; border-color: rgba(232, 93, 74, .16) !important; }
+.landing-hero-bg .product-preview { box-shadow: 0 28px 90px rgba(232, 93, 74, .18), 0 8px 22px rgba(159, 51, 40, .10); border-color: rgba(232, 93, 74, .35); }
+.landing-hero-bg .feature-card:hover { border-color: var(--brand-light); }
+@media (min-width: 901px) { .sidebar.collapsed { width: 76px; flex-basis: 76px; }.sidebar.collapsed + .main-area { margin-left: 76px; }.sidebar.collapsed .sidebar-brand-name, .sidebar.collapsed .sidebar-workspace, .sidebar.collapsed .nav-item > span:not(.nav-sub-dot), .sidebar.collapsed .sidebar-user > div:not(.avatar), .sidebar.collapsed .sidebar-footer button:not(:first-child) { display: none; }.sidebar.collapsed .sidebar-logo { justify-content: flex-start; padding: 20px 4px 16px; gap: 0; }.sidebar.collapsed .sidebar-logo > a { margin: 0; }.sidebar.collapsed .sidebar-collapse { position: absolute; right: 4px; top: 22px; }.sidebar.collapsed .nav-item { justify-content: center; padding-inline: 8px; }.sidebar.collapsed .nav-item.active::before { left: -10px; }.sidebar.collapsed .nav-sub { padding-left: 8px; }.sidebar.collapsed .nav-sub-dot { margin: 0; }.sidebar.collapsed .sidebar-footer { padding-inline: 8px; }.sidebar.collapsed .sidebar-user { justify-content: center; }.sidebar.collapsed .sidebar-footer > div:last-child { flex-direction: column; align-items: center; }.sidebar.collapsed .sidebar-footer > div:last-child button { width: 100%; } }
+@media (max-width: 900px) { .sidebar-collapse { display: none; } }
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  transition: border-color .2s var(--ease), transform .2s var(--ease), box-shadow .2s var(--ease);
+  box-shadow: var(--shadow-xs);
+}
+.feature-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.feature-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--brand-tint);
+  border: 1px solid var(--brand-tint-2);
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+  color: var(--brand-deep);
+}
+
+/* ── Utilitaires grilles responsive ── */
+.grid-auto { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.grid-auto-sm { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+
+@media (max-width: 980px) {
+  .split-2 { display: grid; grid-template-columns: 1fr !important; gap: 16px !important; }
+}
+
+/* ── Opérateurs du segment builder ── */
+.op-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  height: 28px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: #fff;
+  background: var(--text-secondary);
+}
+.op-AND { background: var(--text-primary); }
+.op-OR  { background: #d97706; }
+.op-NOT { background: #b91c1c; }
+
+/* ── Team matrix (maq. équipe) ── */
+.matrix-cell-yes { color: var(--brand-deep); font-weight: 700; }
+.matrix-cell-no  { color: var(--text-faint); }
+
+/* ── Coral direction overrides ── */
+.landing-hero-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 4% 0%, rgba(255, 138, 114, .38) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 55% at 96% 10%, rgba(247, 184, 91, .28) 0%, transparent 55%),
+    linear-gradient(180deg, #fff7f3 0%, #fffaf7 42%, #f4f6f5 100%) !important;
+}
+.landing-hero-bg .landing-nav { background: rgba(255, 247, 243, .92) !important; border-bottom-color: rgba(232, 93, 74, .24) !important; }
+.landing-hero-bg .badge-teal { background: #fff0ec !important; color: #9f3328 !important; border-color: rgba(232, 93, 74, .4) !important; }
+.landing-hero-bg .btn-primary { background: #e85d4a !important; }
+.landing-hero-bg .btn-primary:hover { background: #c94738 !important; }
+.landing-hero-bg .product-preview { border-color: rgba(232, 93, 74, .5) !important; box-shadow: 0 30px 90px rgba(232, 93, 74, .28), 0 8px 24px rgba(159, 51, 40, .14) !important; }
+.landing-hero-bg .preview-sidebar { background: #3a2424; }
+.landing-hero-bg .preview-logo, .landing-hero-bg .preview-bars i:nth-child(4) { background: #e85d4a; }
+.landing-hero-bg .preview-bars i:nth-child(6) { background: #c94738; }
+.landing-hero-bg .preview-list span b { background: #e85d4a; }
+
+/* ── Sidebar compacte : logo et contrôle restent séparés ── */
+@media (min-width: 901px) {
+  .sidebar.collapsed .sidebar-logo {
+    display: grid;
+    grid-template-columns: 32px 24px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0;
+    padding: 20px 8px 16px;
+  }
+  .sidebar.collapsed .sidebar-logo > a {
+    display: block;
+    width: 32px;
+    margin: 0;
+  }
+  .sidebar.collapsed .sidebar-collapse {
+    position: static;
+    width: 24px;
+    height: 24px;
+    margin: 0;
+  }
+}
+
+/* ── Print ── */
+@media print {
+  .sidebar, .sidebar-overlay, .btn { display: none !important; }
+}
+
+/* ── Burger mobile — visible seulement < md, hors du drawer ── */
+.mobile-burger {
+  display: none;
+}
+@media (max-width: 900px) {
+  .mobile-burger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 35;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--border-hover);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+  .mobile-burger:active { transform: scale(.96); }
+}
+
+/* ── Sous-navigations (Tous les contacts, Doublons…) ── */
+.nav-sub { padding-left: 26px; font-size: 13px; }
+.nav-sub-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: currentColor;
+  opacity: .5;
+  flex-shrink: 0;
+  margin: 0 6px;
+}
+.nav-item.active .nav-sub-dot { opacity: 1; background: var(--brand-light); }
+
+.country-flag {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 50%;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  line-height: 1;
+  overflow: hidden;
+}
+.country-flag > .fi { width: 28px; height: 28px; border-radius: 50%; }
+
+/* ── Cadre de la carte du monde (thème adaptatif) ── */
+.map-frame {
+  background: var(--map-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MODE NUIT — inversion complète via variables + retouches ciblées
+   ══════════════════════════════════════════════════════════════ */
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-base:      #0a1110;
+  --bg-surface:   #101b19;
+  --bg-elevated:  #101b19;
+  --bg-card:      #101b19;
+  --bg-page:      #0a1110;
+  --bg-sunken:    #0e1a17;
+  --bg-hover:     rgba(255, 255, 255, 0.05);
+  --bg-active:    rgba(45, 212, 191, 0.1);
+
+  --border:       #203632;
+  --border-soft:  #182a26;
+  --border-hover: #397267;
+  --border-focus: #e85d4a;
+
+  --brand:        #e85d4a;
+  --brand-dark:   #f0715f;
+  --brand-deep:   #ff9d8a;
+  --brand-light:  #ff8a72;
+  --brand-tint:   #2a1a15;
+  --brand-tint-2: #4f2820;
+  --brand-glow:   rgba(232, 93, 74, 0.35);
+
+  --success:      #34d399;
+  --success-bg:   #0d2b22;
+  --warning:      #fbbf24;
+  --warning-bg:   #302409;
+  --danger:       #f87171;
+  --danger-bg:    #321414;
+
+  --text-primary:   #e8f1ee;
+  --text-secondary: #b9cdc7;
+  --text-muted:     #8da7a1;
+  --text-faint:     #5f7a72;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+
+  --track: #1c302b;
+  --map-stroke: #1d3f38;
+  --map-stroke-active: #7fd8cc;
+  --map-nodata: rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme='dark'] body,
+html[data-theme='dark'] .main-area,
+html[data-theme='dark'] .app-shell {
+  background: var(--bg-base);
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); }
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.28); }
+html[data-theme='dark'] ::selection { background: #4f2820; color: #ffd9d1; }
+
+/* Composants : retouches ciblées (le reste suit les variables) */
+html[data-theme='dark'] .input { border-color: #2a4440; }
+html[data-theme='dark'] select.input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%238da7a1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+}
+
+html[data-theme='dark'] .badge { background: #18352f; border-color: #285148; color: #b9e7de; }
+
+html[data-theme='dark'] .btn-ghost { background: #14231f; border-color: #31574f; color: #d8ebe7; }
+html[data-theme='dark'] .btn-ghost:hover { background: #1a302b; border-color: #4b8e80; color: #fff; }
+
+html[data-theme='dark'] table.data-table th { background: #14211f; border-color: #203632; }
+html[data-theme='dark'] table.data-table td { border-color: #1c302b; }
+html[data-theme='dark'] table.data-table tr:hover td { background: #14231f; }
+
+html[data-theme='dark'] .glass-nav { background: rgba(11, 21, 19, 0.88); border-bottom-color: #203632; }
+html[data-theme='dark'] .mobile-burger { background: #101b19; color: #e8f1ee; border-color: #31574f; box-shadow: var(--shadow-md); }
+
+html[data-theme='dark'] .dashboard-welcome {
+  background: linear-gradient(110deg, #102d29, #101b19 68%);
+  border-color: #25574e;
+}
+html[data-theme='dark'] .dashboard-welcome h2 { color: #e8f1ee; }
+html[data-theme='dark'] .quick-action { background: #14231f; border-color: #285148; color: #e8f1ee; }
+html[data-theme='dark'] .quick-action:hover { border-color: #48c8b4; }
+html[data-theme='dark'] .quick-action-icon { background: #193f37; color: #70ddca; }
+
+html[data-theme='dark'] .auth-page {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% -12%, rgba(232, 93, 74, 0.12) 0%, transparent 65%),
+    var(--bg-base);
+}
+
+/* Landing en mode nuit */
+html[data-theme='dark'] .landing-hero-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 4% 0%, rgba(232, 93, 74, 0.14) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 55% at 96% 10%, rgba(247, 184, 91, 0.1) 0%, transparent 55%),
+    linear-gradient(180deg, #0d1a17 0%, #0b1513 42%, #0a1110 100%) !important;
+}
+html[data-theme='dark'] .landing-hero-bg::before {
+  background: radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.05), transparent 48%);
+}
+html[data-theme='dark'] .landing-hero-bg .landing-nav { background: rgba(13, 26, 23, 0.92) !important; border-bottom-color: #203632 !important; }
+html[data-theme='dark'] .landing-hero-bg .badge-teal { background: #2a1a15 !important; color: #ff9d8a !important; border-color: rgba(232, 93, 74, 0.4) !important; }
+
+/* Aperçu produit de la landing : corps clair conservé, contenant adapté */
+html[data-theme='dark'] .product-preview-wrap { perspective: 1200px; }
+
+/* Transition douce entre les deux modes */
+html, body, .kpi-card, .glass-card, .input, .badge, .btn, .data-table th, .data-table td {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: .25s;
+  transition-timing-function: var(--ease);
+}
