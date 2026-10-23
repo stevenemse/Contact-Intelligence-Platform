@@ -52,7 +52,7 @@ export default function SettingsForm({ isOwner, isAdmin, orgName, plan, quota, c
           <span className="text-[color:var(--text-secondary)]">Quota de contacts ({plan})</span>
           <span className="font-medium">{contactCount} / {quota.toLocaleString('fr-FR')}</span>
         </div>
-        <div className="w-full bg-[color:#e3e9e6] rounded-full h-2.5">
+        <div className="w-full bg-[color:var(--track)] rounded-full h-2.5">
           <div className={`h-2.5 rounded-full ${pct > 90 ? 'bg-red-500' : 'bg-teal-700'}`} style={{ width: `${pct}%` }} />
         </div>
         {pct > 90 && (

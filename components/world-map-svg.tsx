@@ -88,7 +88,7 @@ export default function WorldMapSvg({ countries, height = 300, selectedIso, onSe
 
   const fill = (iso2: string): string => {
     const c = byIso.get(iso2)
-    if (!c) return 'rgba(13, 38, 33, 0.07)'
+    if (!c) return 'var(--map-nodata)'
     const invalid = c.invalid ?? 0
     const rate = invalid / Math.max(1, c.n)
     return rate === 0 ? '#0d9488' : rate > 0.3 ? '#c94c4c' : '#d97706'
@@ -105,8 +105,7 @@ export default function WorldMapSvg({ countries, height = 300, selectedIso, onSe
     <div className="relative">
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full block"
-        style={{ background: 'radial-gradient(ellipse at 50% 35%, #eef6f3, #e5f0ec)', borderRadius: 12, border: '1px solid var(--border)' }}
+        className="map-frame w-full block"
         onMouseLeave={() => setHover(null)}
       >
         {paths.map(c => {
@@ -115,10 +114,7 @@ export default function WorldMapSvg({ countries, height = 300, selectedIso, onSe
             <path
               key={c.iso2}
               d={c.d}
-              fill={fill(c.iso2)}
-              fillOpacity={fillOpacity(c.iso2)}
-              stroke={active ? '#0d9488' : '#c6d6d1'}
-              strokeWidth={active ? 1.6 : 0.4}
+              style={{ fill: fill(c.iso2), fillOpacity: fillOpacity(c.iso2), stroke: active ? 'var(--map-stroke-active)' : 'var(--map-stroke)', strokeWidth: active ? 1.6 : 0.4 }}
               className={onSelect ? 'cursor-pointer transition-[stroke,stroke-width] duration-150' : ''}
               onMouseMove={(e) => setHover({ iso2: c.iso2, name: c.name, x: e.clientX, y: e.clientY })}
               onClick={onSelect ? () => onSelect(c.iso2) : undefined}
