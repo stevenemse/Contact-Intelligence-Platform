@@ -137,10 +137,11 @@ const ROLE_COLORS: Record<string, string> = {
   viewer:  '',
 }
 
-export default function Sidebar({ orgName, role, email }: {
+export default function Sidebar({ orgName, role, email, showAdmin = false }: {
   orgName: string
   role: string
   email: string
+  showAdmin?: boolean
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -193,6 +194,7 @@ export default function Sidebar({ orgName, role, email }: {
     'sep',
     { href: '/team',          label: labels.team,        Icon: IconTeam },
     { href: '/settings',      label: labels.settings,    Icon: IconSettings },
+    ...(showAdmin ? [{ href: '/admin', label: labels.admin, Icon: IconActivity } as Item] : []),
   ]
 
   const initials = email
