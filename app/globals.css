@@ -1,5 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
+@import "./globals-part2.css";
+@import "./globals-part3.css";
+@import "./globals-part4.css";
 
 /* ============================================================
    CONTACT INTELLIGENCE — Design System v3 (Light, conforme maquette)
