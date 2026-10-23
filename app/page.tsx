@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { getDictionary, type Locale } from "@/lib/i18n/dictionaries";
 import ThemeToggle from "@/components/theme-toggle";
 import LanguageToggle from "@/components/language-toggle";
-import { I18nProvider } from "@/lib/i18n/i18n-provider";
 
 export const instant = false;
 
@@ -16,7 +15,6 @@ export default async function LandingPage() {
   const features = t.features;
 
   return (
-    <I18nProvider initial={locale as Locale}>
     <main id="main-content" className="landing-hero-bg min-h-screen">
       {/* Nav */}
       <header className="landing-nav" style={{
@@ -220,6 +218,5 @@ export default async function LandingPage() {
         {t.footer}
       </footer>
     </main>
-    </I18nProvider>
   );
 }

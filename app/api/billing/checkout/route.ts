@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const stripe = getStripe()
   if (!stripe) {
     return NextResponse.json({
-      error: "Stripe non configuré : ajoutez STRIPE_SECRET_KEY dans les variables d'environnement.",
+      error: 'Stripe non configuré : ajoutez STRIPE_SECRET_KEY dans les variables d\'environnement.',
       setup: true,
     }, { status: 503 })
   }

@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 
 /**
  * Pattern officiel @supabase/ssr : rafraîchit les tokens de session
- * (cookie sb-*) à chaque requête, et protège l'espace app.
+ * (cookie sb-* ) à chaque requête, et protège l'espace /app.
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
