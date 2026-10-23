@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   type PhoneRow = { normalized_phone: string | null }
   type EmailRow = { email: string | null }
   const seenPhones = new Set(
-    ((existingPhones.data ?? []) as unknown) as PhoneRow[]).map(p => p.normalized_phone ?? '')
+    ((existingPhones.data ?? []) as unknown as PhoneRow[]).map(p => p.normalized_phone ?? '')
   )
   const seenEmails = new Set(
     ((existingEmails.data ?? []) as unknown as EmailRow[]).map(e => (e.email ?? '').toLowerCase())
