@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 
 /**
  * Pattern officiel @supabase/ssr : rafraîchit les tokens de session
- * (cookie sb-* ) à chaque requête, et protège l'espace /app.
+ * (cookie sb-*) à chaque requête, et protège l'espace app.
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -11,7 +11,9 @@ export async function middleware(request: NextRequest) {
   const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
   const origin = request.headers.get('origin')
   const fetchSite = request.headers.get('sec-fetch-site')
-  if (isApi && isMutation && ((origin && origin !== request.nextUrl.origin) || fetchSite === 'cross-site')) {
+  // le webhook Stripe est appelé serveur-à-serveur sans en-tête Origin
+  const isStripeWebhook = pathname === '/api/billing/webhook'
+  if (isApi && isMutation && !isStripeWebhook && ((origin && origin !== request.nextUrl.origin) || fetchSite === 'cross-site')) {
     return NextResponse.json({ error: 'Origine de requête invalide' }, { status: 403 })
   }
 
@@ -43,7 +45,7 @@ export async function middleware(request: NextRequest) {
 
   // Protection des pages uniquement : les /api/* répondent en JSON 401/503,
   // jamais une redirection HTML qui casserait les fetch des composants.
-  const isPublic = pathname === '/login' || pathname === '/register' || pathname === '/reset' || pathname === '/'
+  const isPublic = pathname === '/login' || pathname === '/register' || pathname === '/reset' || pathname === '/' || pathname === '/pricing'
   if (!isApi && !isPublic && pathname !== '/setup' && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
