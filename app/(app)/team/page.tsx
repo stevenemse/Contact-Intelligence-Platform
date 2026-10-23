@@ -7,9 +7,12 @@ import { serviceDb } from '@/lib/supabase/server'
 import { str } from '@/lib/supabase/helpers'
 import { fmtDate } from '@/lib/supabase/page-data'
 import TeamManager from '@/components/team-manager'
+import PlanUpgradeNotice from '@/components/plan-upgrade-notice'
+import { hasPlanFeature } from '@/lib/plans'
 
 export default async function TeamPage() {
   const ctx = await requireOrg()
+  if (!hasPlanFeature(ctx.orgPlan, 'team')) return <PlanUpgradeNotice feature="team" plan={ctx.orgPlan} />
   const db = serviceDb()
 
   let members: { id: string; email: string; name: string; role: string; uid: string; createdAt: string }[] = []

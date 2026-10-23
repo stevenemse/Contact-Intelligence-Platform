@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell">
-      <Sidebar orgName={ctx.orgName} role={ctx.role} email={ctx.email} showAdmin={isSuperAdmin(ctx.email)} />
+      <Sidebar orgName={ctx.orgName} role={ctx.role} email={ctx.email} plan={ctx.orgPlan} showAdmin={isSuperAdmin(ctx.email)} />
       <div className="main-area">
         <header className="glass-nav app-topbar">
           <div className="topbar-left">

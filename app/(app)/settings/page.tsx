@@ -39,13 +39,18 @@ export default async function SettingsPage() {
 
       {isOwner(ctx) && (
         <div className="glass-card">
-          <h3 className="section-title mb-2">Abonnement</h3>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Plan actuel : <span className="badge badge-blue">{ctx.orgPlan}</span> · quota {ctx.quota.toLocaleString('fr-FR')} contacts.
-          </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-            La facturation SaaS (Starter / Business / Enterprise) sera cadrée dans une phase ultérieure.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="section-title mb-2">Abonnement</h3>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Plan actuel : <span className="badge badge-blue">{ctx.orgPlan}</span> · quota {ctx.quota.toLocaleString('fr-FR')} contacts.
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                Comparez les plans ou mettez votre espace à niveau depuis la page Abonnement.
+              </p>
+            </div>
+            <Link href="/settings/billing" className="btn btn-primary btn-sm">Gérer l&apos;abonnement</Link>
+          </div>
         </div>
       )}
 

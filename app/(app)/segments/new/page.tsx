@@ -6,9 +6,12 @@ import Link from 'next/link'
 import { requireOrg, canWrite } from '@/lib/supabase/org-context'
 import { segmentBuilderData } from '@/lib/supabase/page-data'
 import SegmentBuilder from '@/components/segment-builder'
+import PlanUpgradeNotice from '@/components/plan-upgrade-notice'
+import { hasPlanFeature } from '@/lib/plans'
 
 export default async function NewSegmentPage() {
   const ctx = await requireOrg()
+  if (!hasPlanFeature(ctx.orgPlan, 'segments')) return <PlanUpgradeNotice feature="segments" plan={ctx.orgPlan} />
   void canWrite
   const { countries, sources, cities, tags } = await segmentBuilderData(ctx.orgId)
 

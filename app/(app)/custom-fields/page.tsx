@@ -6,9 +6,12 @@ import { requireOrg, canWrite } from '@/lib/supabase/org-context'
 import { serviceDb } from '@/lib/supabase/server'
 import { str } from '@/lib/supabase/helpers'
 import CustomFieldsManager from '@/components/custom-fields-manager'
+import PlanUpgradeNotice from '@/components/plan-upgrade-notice'
+import { hasPlanFeature } from '@/lib/plans'
 
 export default async function CustomFieldsPage() {
   const ctx = await requireOrg()
+  if (!hasPlanFeature(ctx.orgPlan, 'customFields')) return <PlanUpgradeNotice feature="customFields" plan={ctx.orgPlan} />
   const db = serviceDb()
 
   let fields: { id: string; label: string; key: string; type: string }[] = []
