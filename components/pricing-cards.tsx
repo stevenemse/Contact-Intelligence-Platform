@@ -21,7 +21,7 @@ export default function PricingCards({ currentPlan }: { currentPlan?: string | n
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 40 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 0, marginBottom: 40 }}>
         <div style={{ display: 'inline-flex', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 999, padding: 4, gap: 4 }}>
           <button onClick={() => setYearly(false)} className={`btn btn-sm ${!yearly ? 'btn-primary' : 'btn-ghost'}`}>{p.monthly}</button>
           <button onClick={() => setYearly(true)} className={`btn btn-sm ${yearly ? 'btn-primary' : 'btn-ghost'}`}>
@@ -32,6 +32,7 @@ export default function PricingCards({ currentPlan }: { currentPlan?: string | n
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, maxWidth: 1080, margin: '0 auto' }}>
         {PLANS.map(plan => {
+          const name = p[plan.id].name
           const price = yearly ? plan.yearly : plan.monthly
           const features = FEATURES_BY_PLAN[plan.id]
           return (
@@ -39,7 +40,7 @@ export default function PricingCards({ currentPlan }: { currentPlan?: string | n
               {plan.id === 'starter' && (
                 <span className="badge badge-teal" style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)' }}>{p.popular}</span>
               )}
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{p[plan.id].name}</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{name}</h3>
               <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0, minHeight: 36 }}>{p[plan.id].desc}</p>
               <div>
                 {price === null ? (
