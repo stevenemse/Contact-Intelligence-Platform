@@ -5,6 +5,8 @@ export const instant = false
 import { requireOrg } from '@/lib/supabase/org-context'
 import { serviceDb } from '@/lib/supabase/server'
 import { str, fmtDate } from '@/lib/supabase/page-data'
+import PlanUpgradeNotice from '@/components/plan-upgrade-notice'
+import { hasPlanFeature } from '@/lib/plans'
 
 const ACTION_LABEL: Record<string, string> = {
   'workspace.created': 'Espace créé',
@@ -33,6 +35,7 @@ type Row = { id: string; action: string; entity: string; entity_id: string | nul
 
 export default async function ActivityPage() {
   const ctx = await requireOrg()
+  if (!hasPlanFeature(ctx.orgPlan, 'activity')) return <PlanUpgradeNotice feature="activity" plan={ctx.orgPlan} />
   const db = serviceDb()
 
   let rows: Row[] = []

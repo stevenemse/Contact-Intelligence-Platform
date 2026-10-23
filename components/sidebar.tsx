@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/i18n-provider'
 import ThemeToggle from '@/components/theme-toggle'
+import { hasPlanFeature, type PlanFeature } from '@/lib/plans'
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────
 function IconDashboard() {
@@ -105,6 +106,13 @@ function IconSettings() {
     </svg>
   )
 }
+function IconHome() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" style={{width:15,height:15}}>
+      <path d="M3 9l7-6 7 6v7a1 1 0 01-1 1h-4v-5H8v5H4a1 1 0 01-1-1V9z" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
 function IconLogout() {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" style={{width:16,height:16}}>
@@ -137,10 +145,11 @@ const ROLE_COLORS: Record<string, string> = {
   viewer:  '',
 }
 
-export default function Sidebar({ orgName, role, email, showAdmin = false }: {
+export default function Sidebar({ orgName, role, email, plan, showAdmin = false }: {
   orgName: string
   role: string
   email: string
+  plan: string
   showAdmin?: boolean
 }) {
   const pathname = usePathname()
@@ -178,21 +187,21 @@ export default function Sidebar({ orgName, role, email, showAdmin = false }: {
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
-  type Item = { href: string; label: string; Icon?: () => React.ReactElement; sub?: boolean }
+  type Item = { href: string; label: string; Icon?: () => React.ReactElement; sub?: boolean; feature?: PlanFeature }
   const items: (Item | 'sep')[] = [
     { href: '/dashboard',     label: labels.dashboard,   Icon: IconDashboard },
     { href: '/contacts',      label: labels.contacts,    Icon: IconContacts },
-    { href: '/duplicates',    label: labels.duplicates,  Icon: IconDuplicates, sub: true },
+    { href: '/duplicates',    label: labels.duplicates,  Icon: IconDuplicates, sub: true, feature: 'duplicates' },
     { href: '/tags',          label: labels.tags,        Icon: IconTags,       sub: true },
-    { href: '/custom-fields', label: labels.fields,      Icon: IconFields,     sub: true },
+    { href: '/custom-fields', label: labels.fields,      Icon: IconFields,     sub: true, feature: 'customFields' },
     'sep',
-    { href: '/imports',       label: labels.imports,     Icon: IconImport },
-    { href: '/segments',      label: labels.segments,    Icon: IconSegments },
-    { href: '/map',           label: labels.map,         Icon: IconMap },
-    { href: '/exports',       label: labels.exports,     Icon: IconExport },
-    { href: '/activity',      label: labels.activity,    Icon: IconActivity },
+    { href: '/imports',       label: labels.imports,     Icon: IconImport, feature: 'imports' },
+    { href: '/segments',      label: labels.segments,    Icon: IconSegments, feature: 'segments' },
+    { href: '/map',           label: labels.map,         Icon: IconMap, feature: 'map' },
+    { href: '/exports',       label: labels.exports,     Icon: IconExport, feature: 'exports' },
+    { href: '/activity',      label: labels.activity,    Icon: IconActivity, feature: 'activity' },
     'sep',
-    { href: '/team',          label: labels.team,        Icon: IconTeam },
+    { href: '/team',          label: labels.team,        Icon: IconTeam, feature: 'team' },
     { href: '/settings',      label: labels.settings,    Icon: IconSettings },
     ...(showAdmin ? [{ href: '/admin', label: labels.admin, Icon: IconActivity } as Item] : []),
   ]
@@ -250,17 +259,21 @@ export default function Sidebar({ orgName, role, email, showAdmin = false }: {
             if (it === 'sep') {
               return <div key={`sep-${i}`} style={{ height: 1, background: 'var(--sidebar-border)', margin: '8px 8px' }} />
             }
-            const { href, label, Icon, sub } = it as Item
+            const { href, label, Icon, sub, feature } = it as Item
             const active = isActive(href)
+            const locked = feature ? !hasPlanFeature(plan, feature) : false
             return (
               <Link
                 key={href}
-                href={href}
-                className={`nav-item${active ? ' active' : ''}${sub ? ' nav-sub' : ''}`}
+                href={locked ? '/pricing' : href}
+                className={`nav-item${active ? ' active' : ''}${sub ? ' nav-sub' : ''}${locked ? ' nav-item-locked' : ''}`}
                 aria-current={active ? 'page' : undefined}
+                aria-label={locked ? `${label} — upgrade requis` : label}
+                title={locked ? (locale === 'fr' ? `${label} : mettez votre plan à niveau` : `${label}: upgrade your plan`) : undefined}
               >
                 {sub ? <span className="nav-sub-dot" /> : Icon ? <Icon /> : null}
                 <span>{label}</span>
+                {locked && <span className="nav-lock" aria-hidden="true">⌁</span>}
               </Link>
             )
           })}
@@ -281,6 +294,15 @@ export default function Sidebar({ orgName, role, email, showAdmin = false }: {
           </div>
 
           <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+            <Link
+              href="/"
+              className="nav-item"
+              style={{ width: 40, flex: '0 0 40px', justifyContent: 'center', gap: 0, padding: '9px 0' }}
+              title={locale === 'fr' ? 'Accueil' : 'Home'}
+              aria-label={locale === 'fr' ? 'Accueil' : 'Home'}
+            >
+              <IconHome />
+            </Link>
             <ThemeToggle
               style={{ width: 40, flex: '0 0 40px', justifyContent: 'center', gap: 0, fontSize: 12, padding: '9px 0' }}
             />

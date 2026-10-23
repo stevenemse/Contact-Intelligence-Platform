@@ -7,6 +7,8 @@ import { requireOrg, canWrite } from '@/lib/supabase/org-context'
 import { serviceDb } from '@/lib/supabase/server'
 import { str, fmtDate } from '@/lib/supabase/page-data'
 import SegmentsActions from '@/components/segments-actions'
+import PlanUpgradeNotice from '@/components/plan-upgrade-notice'
+import { hasPlanFeature } from '@/lib/plans'
 
 type Rule = { field: string; op: string; value?: string }
 type Group = { and: Rule[]; or: Rule[]; not: Rule[] }
@@ -36,6 +38,7 @@ function groupText(g: Group): string {
 
 export default async function SegmentsPage() {
   const ctx = await requireOrg()
+  if (!hasPlanFeature(ctx.orgPlan, 'segments')) return <PlanUpgradeNotice feature="segments" plan={ctx.orgPlan} />
   const db = serviceDb()
 
   let segments: { id: string; name: string; description: string | null; rulesText: string[]; createdAt: string }[] = []
