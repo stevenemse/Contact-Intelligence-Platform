@@ -10,7 +10,7 @@ import { activeContactsLite } from '@/lib/supabase/data'
 import { mapData } from '@/lib/supabase/page-data'
 import { getDictionary } from '@/lib/i18n/dictionaries'
 import WorldMapSvg from '@/components/world-map-svg'
-import { toFlag } from '@/lib/geo/flags'
+import Flag from '@/components/flag'
 import TodayLabel from '@/components/today-label'
 
 /** En-tête de section avec lien "Voir tout" vers l'onglet correspondant. */
@@ -171,7 +171,7 @@ export default async function DashboardPage() {
           <ul className="space-y-1.5">
             {byPhoneCountry.slice(0, 10).map(p => (
               <li key={p.iso2} className="flex items-center gap-2.5 text-sm">
-                <span className="country-flag" title={p.name} aria-label={p.name}>{toFlag(p.iso2)}</span>
+                <span className="country-flag" title={p.name} aria-label={p.name}><Flag iso2={p.iso2} size={28} /></span>
                 <span className="text-xs font-semibold shrink-0" style={{ color: 'var(--text-muted)' }}>+{p.callingCode}</span>
                 <span className="flex-1 truncate">{p.name}</span>
                 <div className="w-20 rounded-full h-2 shrink-0" style={{ background: '#e3e9e6' }}>
