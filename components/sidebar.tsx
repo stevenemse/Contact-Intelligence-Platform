@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/i18n-provider'
+import ThemeToggle from '@/components/theme-toggle'
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────
 function IconDashboard() {
@@ -278,6 +279,9 @@ export default function Sidebar({ orgName, role, email }: {
           </div>
 
           <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+            <ThemeToggle
+              style={{ width: 40, flex: '0 0 40px', justifyContent: 'center', gap: 0, fontSize: 12, padding: '9px 0' }}
+            />
             <button onClick={toggleLocale} className="nav-item" style={{ flex: 1, justifyContent: 'center', gap: 6, fontSize: 12 }}>
               <IconGlobe />
               {locale === 'fr' ? 'EN' : 'FR'}
