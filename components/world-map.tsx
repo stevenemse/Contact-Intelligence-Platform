@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import WorldMapSvg, { toFlag } from './world-map-svg'
+import WorldMapSvg from './world-map-svg'
+import Flag from '@/components/flag'
 
 export type PhoneCountry = { iso2: string; callingCode: string; name: string; n: number; invalid: number }
 export type City = { name: string; country_iso2: string; n: number }
@@ -41,13 +42,13 @@ export default function WorldMap({ byPhoneCountry, byCity }: {
 
       <p className="text-xs -mt-2" style={{ color: 'var(--text-muted)' }}>
         {selected
-          ? <>Pays sélectionné : <b>{toFlag(selected.iso2)} {selected.name} (+{selected.callingCode})</b></>
+          ? <>Pays sélectionné : <b><Flag iso2={selected.iso2} size={13} /> {selected.name} (+{selected.callingCode})</b></>
           : 'Survolez un pays pour le détail, cliquez pour la fiche. Couleur : teal = valides, orange/rouge = partiellement invalides.'}
       </p>
 
       {selected && (
         <div className="kpi-card">
-          <h3 className="font-bold mb-2">{toFlag(selected.iso2)} {selected.name} · indicatif +{selected.callingCode}</h3>
+          <h3 className="font-bold mb-2 flex items-center gap-2"><Flag iso2={selected.iso2} size={18} /> {selected.name} · indicatif +{selected.callingCode}</h3>
           <div className="text-sm mb-3 flex gap-4 flex-wrap">
             <span><b>{selected.n}</b> numéro(s)</span>
             {selected.invalid > 0 && (
@@ -88,7 +89,7 @@ export default function WorldMap({ byPhoneCountry, byCity }: {
                 className={`flex items-center gap-3 text-sm rounded px-2 py-1 cursor-pointer transition-colors ${selected?.iso2 === p.iso2 ? 'bg-[color:var(--sidebar-active)]' : 'hover:bg-black/5'}`}
                 onClick={() => onSelect(p.iso2)}
               >
-                <span className="w-12 font-bold">{toFlag(p.iso2)} +{p.callingCode}</span>
+                <span className="flex items-center gap-1.5 w-14 shrink-0 font-bold"><Flag iso2={p.iso2} size={14} /> +{p.callingCode}</span>
                 <span className="flex-1 truncate">{p.name}</span>
                 <div className="w-32 rounded-full h-2" style={{ background: '#e3e9e6' }}>
                   <div className="h-2 rounded-full" style={{ width: `${(p.n / maxN) * 100}%`, background: 'var(--brand)' }} />
