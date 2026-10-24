@@ -26,7 +26,8 @@ export default function LoginPage() {
         const j = await res.json().catch(() => ({}))
         throw new Error(j.error || 'Connexion impossible')
       }
-      router.push('/dashboard')
+      // La session reste active dans les cookies Supabase ; l'accueil affiche alors « Mon espace ».
+      router.push('/')
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue')
