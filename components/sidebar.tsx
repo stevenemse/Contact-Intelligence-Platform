@@ -98,6 +98,15 @@ function IconTeam() {
     </svg>
   )
 }
+function IconHelp() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="10" cy="10" r="8"/>
+      <path d="M7.9 7.7a2.2 2.2 0 014.2.8c0 1.5-2.1 1.8-2.1 3" strokeLinecap="round"/>
+      <circle cx="10" cy="14.2" r=".8" fill="currentColor" stroke="none"/>
+    </svg>
+  )
+}
 function IconSettings() {
   return (
     <svg className="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -203,6 +212,7 @@ export default function Sidebar({ orgName, role, email, plan, showAdmin = false 
     'sep',
     { href: '/team',          label: labels.team,        Icon: IconTeam, feature: 'team' },
     { href: '/settings',      label: labels.settings,    Icon: IconSettings },
+    { href: '/help',          label: labels.help,        Icon: IconHelp },
     ...(showAdmin ? [{ href: '/admin', label: labels.admin, Icon: IconActivity } as Item] : []),
   ]
 
