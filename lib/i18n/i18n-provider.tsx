@@ -19,8 +19,12 @@ export function I18nProvider({ children, initial }: { children: ReactNode; initi
   const [locale, setLocaleState] = useState<Locale>(() => {
     if (initial) return initial
     if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem('locale')
-      if (saved === 'fr' || saved === 'en') return saved
+      const stored = window.localStorage.getItem('locale')
+      if (stored === 'fr' || stored === 'en') return stored
+      // Repli sur le cookie serveur : aligne les composants clients
+      // (pricing, etc.) sur la locale déjà rendue côté serveur.
+      const cookie = document.cookie.split('; ').find(c => c.startsWith('locale='))?.slice(7)
+      if (cookie === 'fr' || cookie === 'en') return cookie
     }
     return DEFAULT_LOCALE
   })
