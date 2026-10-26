@@ -6,7 +6,7 @@ import 'server-only'
  * Défaut : le propriétaire du produit.
  */
 export function isSuperAdmin(email: string | null | undefined): boolean {
-  const list = (process.env.SUPER_ADMIN_EMAILS ?? 'stevenemse@gmail.com')
+  const list = (process.env.SUPER_ADMIN_EMAILS ?? 'steveemse@gmail.com')
     .split(',')
     .map(s => s.trim().toLowerCase())
     .filter(Boolean)

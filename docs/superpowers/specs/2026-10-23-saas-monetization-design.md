@@ -16,7 +16,7 @@ Transformer Contact Intelligence Platform en SaaS vendable :
 
 ## Principes de conception
 1. **Source unique des plans** : `lib/plans.ts` définit FREE/STARTER/BUSINESS/ENTERPRISE (quota contacts, sièges, features flags, prix) — utilisé par la page pricing, les gardes de quota, l'admin et le webhook Stripe.
-2. **i18n sans refonte** : on étend le dictionnaire par section de page et on fait passer `t` (calculé côté serveur depuis le cookie `locale`) aux pages ; les composants client restent sur `useI18n()`. Aucune routing `/fr` `/en` (cookie, comme aujourd'hui).
+2. **i18n sans refonte** : on étend le dictionnaire par section de page et on fait passer `t` (calculé côté serveur depuis le cookie `locale`) aux pages ; les composants client restent sur `useI18n()`. Aucun routing `/fr` `/en` (cookie, comme aujourd'hui).
 3. **Stripe = vérité du paiement, Supabase = vérité applicative** : le webhook Stripe met à jour `organizations.plan/contact_quota/subscription_*` ; l'admin peut forcer un plan manuellement (grant) — la table `plan_changes` trace chaque changement.
 
 ## Phase 1 — i18n complet + landing (bilingue, jour/nuit)
@@ -77,7 +77,7 @@ Transformer Contact Intelligence Platform en SaaS vendable :
 - Prix en **euros** : Starter 15 €/mois (150 €/an), Business 38 €/mois (380 €/an), annuel = 2 mois offerts.
 - **Entreprise** : sur devis (CTA contact, pas de checkout) — attribution manuelle via l'admin.
 - **Free** : 1 000 contacts, 1 siège.
-- **Admin** : réservé au propriétaire (liste `SUPER_ADMIN_EMAILS`, défaut stevenemse@gmail.com).
+- **Admin** : réservé au propriétaire (liste `SUPER_ADMIN_EMAILS`, défaut steveemse@gmail.com).
 - **Stripe** : compte à créer — tout le parcours est livré en mode « dégradé propre » (messages de setup) et s'active dès que STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET / STRIPE_PRICE_STARTER / STRIPE_PRICE_BUSINESS sont définis.
 
 ## Ordre d'exécution
