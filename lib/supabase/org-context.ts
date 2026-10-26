@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { connection } from 'next/server'
 import { getAuthUser, serviceDb } from './server'
+import { quotaForPlan } from '@/lib/plans'
 
 export type Role = 'owner' | 'admin' | 'manager' | 'member' | 'viewer'
 
@@ -67,7 +68,9 @@ export async function getOrgContext(): Promise<OrgCtx | null> {
     orgId: membership.organizationId,
     orgName: String(org.name ?? ''),
     orgPlan: String(org.plan ?? 'free'),
-    quota: Number(org.contact_quota ?? 5000),
+    // Quota stocké s'il existe (grant admin, organisations historiques),
+    // sinon celui du plan : plus de 5000 codé en dur hors du catalogue.
+    quota: Number(org.contact_quota ?? quotaForPlan(String(org.plan ?? 'free'))),
     role: membership.role,
   }
 }

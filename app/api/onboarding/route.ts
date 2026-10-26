@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { cookies } from 'next/headers'
 import { getAuthUser, serviceDb } from '@/lib/supabase/server'
+import { quotaForPlan } from '@/lib/plans'
 
 const bodySchema = z.object({ name: z.string().min(1).max(120) })
 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       name,
       slug,
       plan: 'free',
-      contact_quota: 5000,
+      contact_quota: quotaForPlan('free'),
       owner_user_id: user.id,
     })
     .select('id')
