@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/i18n-provider";
+import type { Locale } from "@/lib/i18n/dictionaries";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -19,14 +21,18 @@ export const metadata: Metadata = {
 // Applique le thème mémorisé avant la première peinture (aucun flash).
 const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.dataset.theme=t}}catch(e){}`;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Locale lue côté serveur : les composants clients sont rendus dans la bonne
+  // langue dès le HTML initial (pas de bascule FR → EN après hydratation).
+  const locale = (await cookies()).get("locale")?.value === "en" ? "en" : "fr";
+
   return (
-    <html lang="fr" data-theme="light" suppressHydrationWarning className={inter.variable}>
+    <html lang={locale} data-theme="light" suppressHydrationWarning className={inter.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body style={{ fontFamily: "var(--font-inter, 'Inter', system-ui, sans-serif)" }}>
-        <I18nProvider>{children}</I18nProvider>
+        <I18nProvider initial={locale as Locale}>{children}</I18nProvider>
       </body>
     </html>
   );

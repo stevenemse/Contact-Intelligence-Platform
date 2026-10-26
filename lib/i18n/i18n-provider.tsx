@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { DEFAULT_LOCALE, getDictionary, type Locale } from '@/lib/i18n/dictionaries'
 
 type I18nCtx = {
@@ -18,11 +18,8 @@ const Ctx = createContext<I18nCtx>({
 export function I18nProvider({ children, initial }: { children: ReactNode; initial?: Locale }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
     if (initial) return initial
-    if (typeof window !== 'undefined') {
-      const stored = window.localStorage.getItem('locale')
-      if (stored === 'fr' || stored === 'en') return stored
-      // Repli sur le cookie serveur : aligne les composants clients
-      // (pricing, etc.) sur la locale déjà rendue côté serveur.
+    // Repli cookie : même source que cookies() côté serveur.
+    if (typeof document !== 'undefined') {
       const cookie = document.cookie.split('; ').find(c => c.startsWith('locale='))?.slice(7)
       if (cookie === 'fr' || cookie === 'en') return cookie
     }
@@ -35,6 +32,10 @@ export function I18nProvider({ children, initial }: { children: ReactNode; initi
       document.cookie = `locale=${next}; path=/; max-age=31536000; samesite=lax`
     }
   }
+  // Garde <html lang> aligné sur la langue affichée (lecteurs d'écran, SEO).
+  useEffect(() => {
+    document.documentElement.lang = locale
+  }, [locale])
   return (
     <Ctx.Provider value={{ locale, t: getDictionary(locale), setLocale }}>
       {children}
