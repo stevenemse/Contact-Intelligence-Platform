@@ -81,6 +81,14 @@ function IconExport() {
     </svg>
   )
 }
+function IconShield() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M10 2l6 2.4v4.2c0 4-2.6 7.5-6 8.6-3.4-1.1-6-4.6-6-8.6V4.4L10 2z" strokeLinejoin="round"/>
+      <path d="M7.6 9.8l1.7 1.7 3.2-3.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
 function IconActivity() {
   return (
     <svg className="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -213,7 +221,6 @@ export default function Sidebar({ orgName, role, email, plan, showAdmin = false 
     { href: '/team',          label: labels.team,        Icon: IconTeam, feature: 'team' },
     { href: '/settings',      label: labels.settings,    Icon: IconSettings },
     { href: '/help',          label: labels.help,        Icon: IconHelp },
-    ...(showAdmin ? [{ href: '/admin', label: labels.admin, Icon: IconActivity } as Item] : []),
   ]
 
   const initials = email
@@ -289,6 +296,23 @@ export default function Sidebar({ orgName, role, email, plan, showAdmin = false 
           })}
         </nav>
 
+        {/* Administration plateforme — visible uniquement pour les super-admins */}
+        {showAdmin && (
+          <div className="sidebar-admin">
+            <div className="sidebar-admin-label">{locale === 'fr' ? 'Plateforme' : 'Platform'}</div>
+            <Link
+              href="/admin"
+              className={`nav-item nav-admin${isActive('/admin') ? ' active' : ''}`}
+              aria-current={isActive('/admin') ? 'page' : undefined}
+              title={locale === 'fr' ? 'Administration de la plateforme' : 'Platform administration'}
+            >
+              <IconShield />
+              <span>{labels.admin}</span>
+              <span className="nav-admin-pill" aria-hidden="true">super</span>
+            </Link>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="sidebar-footer">
           <div className="sidebar-user">
@@ -303,28 +327,31 @@ export default function Sidebar({ orgName, role, email, plan, showAdmin = false 
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+          <div className="sidebar-tools">
             <Link
               href="/"
-              className="nav-item"
-              style={{ width: 40, flex: '0 0 40px', justifyContent: 'center', gap: 0, padding: '9px 0' }}
+              className="nav-item sidebar-tool"
               title={locale === 'fr' ? 'Accueil' : 'Home'}
               aria-label={locale === 'fr' ? 'Accueil' : 'Home'}
             >
               <IconHome />
             </Link>
-            <ThemeToggle
-              style={{ width: 40, flex: '0 0 40px', justifyContent: 'center', gap: 0, fontSize: 12, padding: '9px 0' }}
-            />
-            <button onClick={toggleLocale} className="nav-item" style={{ flex: 1, justifyContent: 'center', gap: 6, fontSize: 12 }}>
+            <ThemeToggle className="sidebar-tool" style={{ fontSize: 12 }} />
+            <button
+              onClick={toggleLocale}
+              className="nav-item sidebar-tool"
+              aria-label={locale === 'fr' ? 'Passer en anglais' : 'Switch to French'}
+              title={locale === 'fr' ? 'Passer en anglais' : 'Switch to French'}
+            >
               <IconGlobe />
-              {locale === 'fr' ? 'EN' : 'FR'}
-            </button>
-            <button onClick={logout} className="nav-item" style={{ flex: 1, justifyContent: 'center', gap: 6, fontSize: 12, color: '#f8a5a5' }}>
-              <IconLogout />
-              {labels.logout}
+              <span>{locale === 'fr' ? 'EN' : 'FR'}</span>
             </button>
           </div>
+
+          <button onClick={logout} className="sidebar-logout" title={labels.logout}>
+            <IconLogout />
+            <span>{labels.logout}</span>
+          </button>
         </div>
       </aside>
     </>
