@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "./sidebar-admin.css";
 import { I18nProvider } from "@/lib/i18n/i18n-provider";
 import type { Locale } from "@/lib/i18n/dictionaries";
 

@@ -1,0 +1,112 @@
+/* Sidebar (pied de page, espace plateforme) et habillage de /admin.
+   Chargé après globals.css depuis app/layout.tsx pour passer devant les
+   règles de sidebar réduite de globals-part3.css. */
+
+/* ── Espace d'administration (super-admins) ───────────────────────────────── */
+.admin-shell { min-height: 100vh; background: var(--bg); }
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.admin-topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.admin-topbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-badge {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 183, 94, .18);
+  color: #b3701a;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+[data-theme="dark"] .admin-badge { color: #ffc978; }
+@media (max-width: 520px) { .admin-topbar-title { display: none; } }
+
+/* ── Sidebar : rangée d'outils + déconnexion pleine largeur ──────────────── */
+.sidebar-tools { display: flex; gap: 4px; margin-top: 10px; }
+.sidebar-tool { flex: 1 1 0; min-width: 0; justify-content: center; gap: 5px; padding: 9px 0; font-size: 12px; }
+.sidebar-logout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(248, 165, 165, .25);
+  background: rgba(248, 165, 165, .08);
+  color: #f8a5a5;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s var(--ease), color .15s var(--ease);
+}
+.sidebar-logout:hover { background: rgba(248, 165, 165, .18); color: #ffdada; }
+.sidebar-logout:focus-visible { outline: 2px solid #f8a5a5; outline-offset: 2px; }
+.sidebar-logout span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Bloc plateforme réservé aux super-admins ────────────────────────────── */
+.sidebar-admin { margin: 10px 8px 0; padding-top: 10px; border-top: 1px solid var(--sidebar-border); }
+.sidebar-admin-label {
+  padding: 0 10px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(167, 187, 180, .75);
+}
+.nav-admin { color: #ffd9a8; }
+.nav-admin.active { background: var(--sidebar-active); color: #ffe6c4; }
+.nav-admin-pill {
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 183, 94, .16);
+  color: #ffc978;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* Sidebar réduite : outils et déconnexion restent visibles, en icônes */
+@media (min-width: 901px) {
+  .sidebar.collapsed .sidebar-footer div.sidebar-tools { flex-direction: row; align-items: center; gap: 4px; }
+  .sidebar.collapsed .sidebar-footer .sidebar-tools a.sidebar-tool,
+  .sidebar.collapsed .sidebar-footer .sidebar-tools button.sidebar-tool {
+    display: flex;
+    flex: 1 1 0;
+    width: auto;
+    padding: 9px 0;
+    justify-content: center;
+  }
+  .sidebar.collapsed .sidebar-footer button.sidebar-logout {
+    display: flex;
+    justify-content: center;
+    padding: 9px 0;
+    margin-top: 8px;
+  }
+  .sidebar.collapsed .sidebar-footer .sidebar-tools span,
+  .sidebar.collapsed .sidebar-footer button.sidebar-logout span,
+  .sidebar.collapsed .sidebar-admin-label,
+  .sidebar.collapsed .nav-admin-pill { display: none; }
+  .sidebar.collapsed .sidebar-admin { margin-inline: 4px; }
+}
