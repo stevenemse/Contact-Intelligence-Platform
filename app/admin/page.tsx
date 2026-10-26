@@ -14,10 +14,28 @@ export default async function AdminPage() {
   const db = serviceDb()
   const t = getDictionary('fr')
 
-  const { data } = await db?.from('organizations')
+  // Sans clé serveur, la liste sortirait vide sans explication : on dit plutôt
+  // quoi faire, sinon on croit que l'admin est cassé.
+  if (!db) {
+    return (
+      <div className="p-4 md:p-8 space-y-4" style={{ maxWidth: 780 }}>
+        <div className="dashboard-header">
+          <p className="eyebrow">{t.admin.title}</p>
+          <h1 className="display-1">{t.admin.title}</h1>
+        </div>
+        <div className="alert-error">
+          Administration indisponible : la clé serveur Supabase n&apos;est pas configurée.
+          Ajoutez <b>SUPABASE_SERVICE_ROLE_KEY</b> (Supabase → Project Settings → API)
+          puis redéployez.
+        </div>
+      </div>
+    )
+  }
+
+  const { data, error } = await db.from('organizations')
     .select('id, name, plan, contact_quota, subscription_status, current_period_end, stripe_customer_id, billing_email, created_at, contacts(count)')
     .order('created_at', { ascending: false })
-    .limit(500) ?? { data: null }
+    .limit(500)
 
   const orgs = ((data ?? []) as unknown as {
     id: string; name: string | null; plan: string | null; contact_quota: number | null
@@ -44,6 +62,11 @@ export default async function AdminPage() {
         <p className="subtitle-page mt-1">{t.admin.sub}</p>
       </div>
       <AdminBilling initialOrgs={orgs} myEmail={ctx.email} />
+      {error && (
+        <div className="alert-error">
+          Lecture des organisations impossible : {error.message}
+        </div>
+      )}
     </div>
   )
 }
