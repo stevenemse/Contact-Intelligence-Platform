@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   keywords: ["CRM", "contacts", "import CSV", "déduplication", "Cameroun", "Afrique"],
 };
 
+// Locale lue au rendu (cookie) : le layout est bloquant, comme les layouts
+// d'espace connecté. Sans ceci, le pré-rendu statique échoue sur cookies().
+export const instant = false;
+
 // Applique le thème mémorisé avant la première peinture (aucun flash).
 const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.dataset.theme=t}}catch(e){}`;
 
