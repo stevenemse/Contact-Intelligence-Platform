@@ -46,8 +46,7 @@ export default async function LandingPage() {
       </header>
 
       <section style={{ maxWidth:1080, margin:'0 auto', padding:'96px 32px 72px', textAlign:'left' }}>
-        <div className="fade-up"><span className="badge badge-teal" style={{fontSize:12,marginBottom:20,display:'inline-flex'}}>{t.badge}</span></div>
-        <h1 className="fade-up delay-1" style={{ fontSize:'clamp(44px, 7vw, 78px)', fontWeight:800, letterSpacing:'-.035em', lineHeight:1.05, color:'var(--text-primary)', marginTop:16 }}>
+        <h1 className="fade-up delay-1" style={{ fontSize:'clamp(44px, 7vw, 78px)', fontWeight:800, letterSpacing:'-.035em', lineHeight:1.05, color:'var(--text-primary)' }}>
           {t.hero1}<br /><span style={{ color:'var(--brand)' }}>{t.hero2}</span>
         </h1>
         <p className="fade-up delay-2" style={{ marginTop:24, fontSize:18, lineHeight:1.6, color:'var(--text-muted)', maxWidth:560 }}>{t.heroSub}</p>
