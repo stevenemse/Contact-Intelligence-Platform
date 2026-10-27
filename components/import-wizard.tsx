@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import Papa from 'papaparse'
 import { parseCsvPreview } from '@/lib/contacts/normalize'
+import { IMPORT_CHUNK_ROWS, MAX_IMPORT_ROWS } from '@/lib/imports/limits'
 
 type Mapping = Record<string, string>
 type DupRules = { keyPhone: boolean; keyEmail: boolean; onDuplicate: 'skip' | 'update' }
@@ -25,6 +26,47 @@ const TARGETS: { key: string; label: string; hint: string }[] = [
 const STEPS = ['Fichier', 'Aperçu', 'Mapping', 'Doublons', 'Validation', 'Traitement', 'Rapport']
 
 type Report = { inserted: number; updated: number; skipped: number; invalidPhone: number; invalidEmail: number; errors: { row: number; reason: string }[] }
+type ImportResponse = { importId?: string; report?: Partial<Report> }
+
+const fmt = (n: number) => n.toLocaleString('fr-FR')
+
+function emptyReport(): Report {
+  return { inserted: 0, updated: 0, skipped: 0, invalidPhone: 0, invalidEmail: 0, errors: [] }
+}
+
+/** Additionne le rapport cumulé avec le rapport partiel d'un lot. */
+function mergeReport(into: Report, part: Partial<Report> | undefined) {
+  if (!part) return
+  into.inserted += part.inserted ?? 0
+  into.updated += part.updated ?? 0
+  into.skipped += part.skipped ?? 0
+  into.invalidPhone += part.invalidPhone ?? 0
+  into.invalidEmail += part.invalidEmail ?? 0
+  into.errors.push(...(part.errors ?? []))
+}
+
+/**
+ * Envoi d'une requête d'import : le message d'erreur dit toujours ce qui s'est
+ * réellement passé (statut HTTP + détail serveur), jamais un générique trompeur.
+ */
+async function postImport(payload: Record<string, unknown>): Promise<ImportResponse> {
+  let res: Response
+  try {
+    res = await fetch('/api/imports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    throw new Error('Envoi interrompu : connexion au serveur perdue.')
+  }
+  const j = (await res.json().catch(() => null)) as (ImportResponse & { error?: string }) | null
+  if (!res.ok) {
+    const detail = j?.error
+    throw new Error(detail ? `Échec (HTTP ${res.status}) — ${detail}` : `Échec de la requête (HTTP ${res.status}).`)
+  }
+  return j ?? {}
+}
 
 export default function ImportWizard({ orgId }: { orgId: string; canWrite?: boolean }) {
   void orgId
@@ -41,6 +83,7 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
   const [progressLabel, setProgressLabel] = useState('')
   const [report, setReport] = useState<Report | null>(null)
   const [importId, setImportId] = useState<string | null>(null)
+  const [sentRows, setSentRows] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -78,44 +121,71 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
   }
 
   const doImport = useCallback(async () => {
-    setBusy(true); setError(null)
-    if (!file) { setBusy(false); return }
+    if (!file) return
+    setBusy(true)
+    setError(null)
+    setImportId(null)
+    setSentRows(0)
+    setReport(null)
+    let createdId: string | null = null
+    let sent = 0
     try {
-      setProgressLabel('Envoi au serveur (normalisation + dédoublonnage)…')
-      setProgress(15)
       const fullText = await file.text()
       const { data } = Papa.parse<Record<string, unknown>>(fullText, {
         header: true,
         skipEmptyLines: 'greedy',
       })
-      const res = await fetch('/api/imports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          source: sourceName || undefined,
-          mapping,
-          dupRules: { keyPhone: dupRules.keyPhone, keyEmail: dupRules.keyEmail },
-          rows: data as Record<string, unknown>[],
-        }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(j.error || 'Import impossible (Supabase configuré ?)')
-      setProgress(100)
-      setImportId(j.importId ?? null)
-      const r: Report = {
-        inserted: j.report?.inserted ?? 0,
-        updated: j.report?.updated ?? 0,
-        skipped: j.report?.skipped ?? 0,
-        invalidPhone: j.report?.invalidPhone ?? 0,
-        invalidEmail: j.report?.invalidEmail ?? 0,
-        errors: (j.report?.errors ?? []) as Report['errors'],
+      const rows = data as Record<string, unknown>[]
+      if (rows.length === 0) throw new Error('Aucune ligne détectée dans ce fichier.')
+      if (rows.length > MAX_IMPORT_ROWS) {
+        throw new Error(`Ce fichier compte ${fmt(rows.length)} lignes : le plafond est de ${fmt(MAX_IMPORT_ROWS)} lignes. Découpez-le en plusieurs fichiers.`)
       }
-      setReport(r)
+
+      // 1. création de l'import (métadonnées seulement, aucune ligne de données)
+      setProgressLabel('Création de l’import…')
+      setProgress(2)
+      const created = await postImport({
+        action: 'create',
+        fileName: file.name,
+        source: sourceName || undefined,
+        mapping,
+        dupRules: { keyPhone: dupRules.keyPhone, keyEmail: dupRules.keyEmail },
+        totalRows: rows.length,
+      })
+      if (!created.importId) throw new Error('Le serveur n’a pas renvoyé d’identifiant d’import.')
+      createdId = created.importId
+      setImportId(createdId)
+
+      // 2. envoi par lots : un corps de plusieurs Mo serait rejeté (413) par la plateforme
+      const chunkCount = Math.ceil(rows.length / IMPORT_CHUNK_ROWS)
+      const merged = emptyReport()
+      for (let offset = 0, n = 1; offset < rows.length; offset += IMPORT_CHUNK_ROWS, n++) {
+        const slice = rows.slice(offset, offset + IMPORT_CHUNK_ROWS)
+        setProgressLabel(
+          `Envoi du lot ${n}/${chunkCount} — ${fmt(Math.min(offset + slice.length, rows.length))} / ${fmt(rows.length)} lignes`,
+        )
+        const part = await postImport({ action: 'chunk', importId: createdId, offset, rows: slice })
+        mergeReport(merged, part.report)
+        sent += slice.length
+        setSentRows(sent)
+        setProgress(Math.min(98, 2 + Math.round((sent / rows.length) * 96)))
+      }
+
+      // 3. clôture : le serveur finalise le statut et journalise
+      await postImport({ action: 'finish', importId: createdId })
+      setProgress(100)
+      setReport(merged)
       setStep(6)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Erreur inconnue pendant l\'import')
-      setStep(4)
+      const msg = e instanceof Error ? e.message : 'Erreur inconnue pendant l\'import'
+      setError(msg)
+      if (createdId) {
+        // on clôture honnêtement : les lots déjà traités restent en base (statut « partial »)
+        void postImport({ action: 'finish', importId: createdId, failed: true }).catch(() => {})
+        setStep(5)
+      } else {
+        setStep(4)
+      }
     } finally {
       setBusy(false)
     }
@@ -182,7 +252,7 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
               Choisir un fichier
             </button>
             <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-              Encodage UTF-8, Latin1 et UTF-16 détectés automatiquement · 20 Mo maximum
+              Encodage UTF-8, Latin1 et UTF-16 détectés automatiquement · 20 Mo et {fmt(MAX_IMPORT_ROWS)} lignes maximum
             </p>
           </div>
 
@@ -223,9 +293,22 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
             </table>
           </div>
           <p className="field-hint">Vérifiez que les colonnes sont bien reconnues avant de continuer.</p>
+          {totalRows > MAX_IMPORT_ROWS && (
+            <p className="alert-error">
+              Ce fichier compte {fmt(totalRows)} lignes, au-delà du plafond de {fmt(MAX_IMPORT_ROWS)} lignes par import.
+              Découpez-le en plusieurs fichiers avant de continuer.
+            </p>
+          )}
           <div className="flex justify-between">
             <button type="button" onClick={() => setStep(0)} className="btn btn-ghost">← Fichier</button>
-            <button type="button" onClick={() => setStep(2)} className="btn btn-primary">Mapping →</button>
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              disabled={totalRows === 0 || totalRows > MAX_IMPORT_ROWS}
+              className="btn btn-primary"
+            >
+              Mapping →
+            </button>
           </div>
         </div>
       )}
@@ -363,6 +446,7 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
           </dl>
           <p className="field-hint">
             Les téléphones sont normalisés au format international et les noms remis en casse titre.
+            L’envoi se fait par lots de {fmt(IMPORT_CHUNK_ROWS)} lignes : un lot déjà importé reste en base si la suite échoue.
           </p>
           {error && <p className="alert-error">{error}</p>}
           <div className="flex justify-between">
@@ -381,7 +465,19 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
             <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
           </div>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{progressLabel} — {progress}%</p>
-          {error && <p className="alert-error">{error}</p>}
+          {error && (
+            <>
+              <p className="alert-error">{error}</p>
+              {sentRows > 0 && (
+                <p className="field-hint">
+                  {fmt(sentRows)} lignes ont été envoyées et importées : elles restent en base. Les lignes suivantes n’ont pas été traitées.
+                </p>
+              )}
+              <div className="flex justify-between pt-1">
+                <button type="button" onClick={() => setStep(4)} className="btn btn-ghost">← Récapitulatif</button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
