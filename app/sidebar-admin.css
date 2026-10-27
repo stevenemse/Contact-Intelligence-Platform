@@ -40,8 +40,38 @@
 @media (max-width: 520px) { .admin-topbar-title { display: none; } }
 
 /* ── Sidebar : rangée d'outils + déconnexion pleine largeur ──────────────── */
-.sidebar-tools { display: flex; gap: 4px; margin-top: 10px; }
-.sidebar-tool { flex: 1 1 0; min-width: 0; justify-content: center; gap: 5px; padding: 9px 0; font-size: 12px; }
+.sidebar-tools { display: flex; gap: 6px; margin-top: 10px; }
+.sidebar-tools .sidebar-tool {
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 9px 0;
+  font-size: 12px;
+  width: auto;
+  text-align: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid var(--sidebar-border);
+  color: var(--sidebar-text);
+  cursor: pointer;
+  transition: background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease);
+}
+.sidebar-tools .sidebar-tool:hover {
+  background: var(--sidebar-hover);
+  color: #e2ece9;
+}
+.sidebar-tools .sidebar-tool:focus-visible {
+  outline: 2px solid var(--brand-light);
+  outline-offset: 2px;
+}
+/* état activé du basculement jour/nuit : le thème courant est lisible */
+.sidebar-tools .sidebar-tool[aria-pressed="true"] {
+  color: var(--brand-light);
+  border-color: var(--brand-light);
+  background: rgba(255, 255, 255, .09);
+}
 .sidebar-logout {
   display: flex;
   align-items: center;

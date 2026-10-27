@@ -16,6 +16,27 @@ export type AdminOrg = {
   contactCount: number
 }
 
+/** Comptages plateforme exacts (lecture serveur, indépendants de la liste des orgs). */
+export type AdminStats = {
+  orgs: number
+  orgsNew: number
+  accounts: number
+  accountsNew: number
+  contacts: number
+  imports: number
+  exports: number
+}
+
+/** Adhésion récente (liste « comptes créés récemment »). */
+export type RecentAccount = {
+  email: string
+  name: string | null
+  role: string
+  orgName: string
+  orgPlan: string
+  createdAt: string
+}
+
 const STATUS_BADGE: Record<string, string> = {
   active: 'badge-green',
   trialing: 'badge-blue',
