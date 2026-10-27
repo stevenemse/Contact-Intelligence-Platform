@@ -30,37 +30,40 @@
 
 .landing-hero-bg {
   position: relative;
-  background: var(--bg-base);
+  background:
+    radial-gradient(ellipse 70% 55% at 12% 8%, rgba(255, 138, 114, .28) 0%, transparent 62%),
+    radial-gradient(ellipse 70% 60% at 88% 22%, rgba(247, 184, 91, .22) 0%, transparent 60%),
+    linear-gradient(180deg, #fff8f5 0%, #fdf7f3 45%, var(--bg-base) 100%);
 }
+.landing-hero-bg::before { content: ''; position: absolute; inset: 64px 0 auto; height: 560px; pointer-events: none; background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.9), transparent 48%); }
 .landing-hero-bg > * { position: relative; }
-.landing-hero-bg .landing-nav { background: var(--bg-card) !important; border-color: var(--border) !important; }
-.landing-hero-bg .product-preview { box-shadow: none; border-color: var(--border); }
+.landing-hero-bg .landing-nav { background: rgba(255, 248, 245, .78) !important; border-color: rgba(232, 93, 74, .16) !important; }
+.landing-hero-bg .product-preview { box-shadow: 0 28px 90px rgba(232, 93, 74, .18), 0 8px 22px rgba(159, 51, 40, .10); border-color: rgba(232, 93, 74, .35); }
 .landing-hero-bg .feature-card:hover { border-color: var(--brand-light); }
 @media (min-width: 901px) { .sidebar.collapsed { width: 76px; flex-basis: 76px; }.sidebar.collapsed + .main-area { margin-left: 76px; }.sidebar.collapsed .sidebar-brand-name, .sidebar.collapsed .sidebar-workspace, .sidebar.collapsed .nav-item > span:not(.nav-sub-dot), .sidebar.collapsed .sidebar-user > div:not(.avatar), .sidebar.collapsed .sidebar-footer button:not(:first-child) { display: none; }.sidebar.collapsed .sidebar-logo { justify-content: flex-start; padding: 20px 4px 16px; gap: 0; }.sidebar.collapsed .sidebar-logo > a { margin: 0; }.sidebar.collapsed .sidebar-collapse { position: absolute; right: 4px; top: 22px; }.sidebar.collapsed .nav-item { justify-content: center; padding-inline: 8px; }.sidebar.collapsed .nav-item.active::before { left: -10px; }.sidebar.collapsed .nav-sub { padding-left: 8px; }.sidebar.collapsed .nav-sub-dot { margin: 0; }.sidebar.collapsed .sidebar-footer { padding-inline: 8px; }.sidebar.collapsed .sidebar-user { justify-content: center; }.sidebar.collapsed .sidebar-footer > div:last-child { flex-direction: column; align-items: center; }.sidebar.collapsed .sidebar-footer > div:last-child button { width: 100%; } }
 @media (max-width: 900px) { .sidebar-collapse { display: none; } }
 .feature-card {
-  background: transparent;
-  border: none;
-  border-top: 1px solid var(--border);
-  border-radius: 0;
-  padding: 22px 0 0;
-  transition: border-color .2s var(--ease);
-  box-shadow: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  transition: border-color .2s var(--ease), transform .2s var(--ease), box-shadow .2s var(--ease);
+  box-shadow: var(--shadow-xs);
 }
 .feature-card:hover {
-  border-top-color: var(--border-hover);
-  transform: none;
-  box-shadow: none;
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 .feature-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: var(--brand-tint);
   border: 1px solid var(--brand-tint-2);
   display: grid;
   place-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   color: var(--brand-deep);
 }
 
@@ -96,13 +99,16 @@
 
 /* ── Coral direction overrides ── */
 .landing-hero-bg {
-  background: var(--bg-base) !important;
+  background:
+    radial-gradient(ellipse 80% 60% at 4% 0%, rgba(255, 138, 114, .38) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 55% at 96% 10%, rgba(247, 184, 91, .28) 0%, transparent 55%),
+    linear-gradient(180deg, #fff7f3 0%, #fffaf7 42%, #f4f6f5 100%) !important;
 }
-.landing-hero-bg .landing-nav { background: var(--bg-card) !important; border-bottom-color: var(--border) !important; }
+.landing-hero-bg .landing-nav { background: rgba(255, 247, 243, .92) !important; border-bottom-color: rgba(232, 93, 74, .24) !important; }
 .landing-hero-bg .badge-teal { background: #fff0ec !important; color: #9f3328 !important; border-color: rgba(232, 93, 74, .4) !important; }
 .landing-hero-bg .btn-primary { background: #e85d4a !important; }
 .landing-hero-bg .btn-primary:hover { background: #c94738 !important; }
-.landing-hero-bg .product-preview { border-color: var(--border) !important; box-shadow: none !important; }
+.landing-hero-bg .product-preview { border-color: rgba(232, 93, 74, .5) !important; box-shadow: 0 30px 90px rgba(232, 93, 74, .28), 0 8px 24px rgba(159, 51, 40, .14) !important; }
 .landing-hero-bg .preview-sidebar { background: #3a2424; }
 .landing-hero-bg .preview-logo, .landing-hero-bg .preview-bars i:nth-child(4) { background: #e85d4a; }
 .landing-hero-bg .preview-bars i:nth-child(6) { background: #c94738; }
@@ -317,10 +323,18 @@ html[data-theme='dark'] .auth-page {
   background: var(--bg-base);
 }
 
-/* Landing en mode nuit : fond piloté par --bg-base, sans halo */
-html[data-theme='dark'] .landing-hero-bg .landing-nav { background: rgba(16, 27, 25, 0.94) !important; border-bottom-color: #203632 !important; }
+/* Landing en mode nuit */
+html[data-theme='dark'] .landing-hero-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 4% 0%, rgba(232, 93, 74, 0.14) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 55% at 96% 10%, rgba(247, 184, 91, 0.1) 0%, transparent 55%),
+    linear-gradient(180deg, #0d1a17 0%, #0b1513 42%, #0a1110 100%) !important;
+}
+html[data-theme='dark'] .landing-hero-bg::before {
+  background: radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.05), transparent 48%);
+}
+html[data-theme='dark'] .landing-hero-bg .landing-nav { background: rgba(13, 26, 23, 0.92) !important; border-bottom-color: #203632 !important; }
 html[data-theme='dark'] .landing-hero-bg .badge-teal { background: #2a1a15 !important; color: #ff9d8a !important; border-color: rgba(232, 93, 74, 0.4) !important; }
-html[data-theme='dark'] .feature-card { border-top-color: #203632; }
 
 /* Aperçu produit de la landing : corps clair conservé, contenant adapté */
 html[data-theme='dark'] .product-preview-wrap { perspective: 1200px; }
