@@ -31,10 +31,12 @@ export default function ThemeToggle({ className = '', style }: {
 }) {
   const dark = useSyncExternalStore(subscribeTheme, isDark, () => false)
 
+  // Pas de classe « nav-item » ici : elle réserve toute la largeur de la
+  // sidebar (width: 100 %) et faisait déborder la nav de la landing.
   return (
     <button
       onClick={() => setTheme(!dark)}
-      className={`nav-item ${className}`}
+      className={className}
       style={style}
       aria-pressed={dark}
       aria-label={dark ? 'Passer en mode jour' : 'Passer en mode nuit'}
