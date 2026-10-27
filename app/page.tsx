@@ -45,12 +45,12 @@ export default async function LandingPage() {
         </nav>
       </header>
 
-      <section style={{ maxWidth:1080, margin:'0 auto', padding:'96px 32px 72px', textAlign:'left' }}>
+      <section style={{ maxWidth:1080, margin:'0 auto', padding:'96px 32px 72px', textAlign:'center' }}>
         <h1 className="fade-up delay-1" style={{ fontSize:'clamp(44px, 7vw, 78px)', fontWeight:800, letterSpacing:'-.035em', lineHeight:1.05, color:'var(--text-primary)' }}>
           {t.hero1}<br /><span style={{ color:'var(--brand)' }}>{t.hero2}</span>
         </h1>
-        <p className="fade-up delay-2" style={{ marginTop:24, fontSize:18, lineHeight:1.6, color:'var(--text-muted)', maxWidth:560 }}>{t.heroSub}</p>
-        <div className="fade-up delay-3" style={{marginTop:36,display:'flex',alignItems:'center',justifyContent:'flex-start',gap:12,flexWrap:'wrap'}}>
+        <p className="fade-up delay-2" style={{ margin:'24px auto 0', fontSize:18, lineHeight:1.6, color:'var(--text-muted)', maxWidth:620 }}>{t.heroSub}</p>
+        <div className="fade-up delay-3" style={{marginTop:36,display:'flex',alignItems:'center',justifyContent:'center',gap:12,flexWrap:'wrap'}}>
           <Link href={user ? '/dashboard' : '/register'} className="btn btn-primary" style={{padding:'12px 28px',fontSize:15}}>{user ? workspaceLabel : t.ctaCreate}</Link>
           {!user && <Link href="/login" className="btn btn-ghost" style={{padding:'12px 24px',fontSize:15}}>{t.ctaLogin}</Link>}
         </div>
