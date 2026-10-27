@@ -1,5 +1,6 @@
 import 'server-only'
 import { serviceDb } from './server'
+import { selectAllRows } from './pagination'
 
 // ── Types publics (mêmes formes que la version Firestore, camelCase) ────────
 
@@ -365,16 +366,21 @@ export async function contactsByIds(orgId: string, ids: string[]): Promise<DbCon
   return acc
 }
 
-/** Liste légère de tous les contacts actifs (<< 10000) pour agrégats. */
+/**
+ * Liste légère de tous les contacts actifs pour les agrégats. Pagination
+ * explicite : PostgREST renvoie au maximum 1000 lignes par requête, une limite
+ * simple tronquerait silencieusement les comptages au-delà de 10 000 contacts.
+ */
 export async function activeContactsLite(
   orgId: string,
   cols = 'id, full_name, company, source, city, country_iso2, country_name, region, notes, job_title, first_name, last_name, created_at, updated_at'
 ): Promise<DbContact[]> {
   const db = serviceDb()
   if (!db) return []
-  const { data } = await db.from('contacts').select(cols).eq('organization_id', orgId)
-    .is('merged_into', null).limit(10000)
-  return (data ?? []) as unknown as DbContact[]
+  return selectAllRows<DbContact>((from, to) =>
+    db.from('contacts').select(cols).eq('organization_id', orgId)
+      .is('merged_into', null)
+      .order('id', { ascending: true }).range(from, to))
 }
 
 /** Journal d'activité (écriture centralisée). */

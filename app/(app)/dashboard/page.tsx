@@ -7,7 +7,8 @@ import { requireOrg } from '@/lib/supabase/org-context'
 import { serviceDb } from '@/lib/supabase/server'
 import { str, num } from '@/lib/supabase/helpers'
 import { activeContactsLite } from '@/lib/supabase/data'
-import { mapData } from '@/lib/supabase/page-data'
+import { selectAllRows } from '@/lib/supabase/pagination'
+import { phoneCountryStats } from '@/lib/supabase/page-data'
 import { getDictionary } from '@/lib/i18n/dictionaries'
 import WorldMapSvg from '@/components/world-map-svg'
 import Flag from '@/components/flag'
@@ -41,49 +42,59 @@ export default async function DashboardPage() {
     fullName: str(c.full_name),
     company: str(c.company),
   }))
+  const activeIds = new Set(contacts.map(c => c.id))
+  const total = contacts.length
 
-  // validité des téléphones (primaire uniquement, contacts actifs)
+  // Numéros principaux, tous les contacts actifs (pagination explicite : une
+  // limite simple tronquerait silencieusement au-delà de 1 000 lignes).
+  type PhoneAggRow = {
+    contact_id: string
+    is_primary: boolean | null
+    is_valid: boolean | null
+    normalized_phone: string | null
+    country_code: string | null
+  }
+  const phoneRows: PhoneAggRow[] = db ? await selectAllRows<PhoneAggRow>((from, to) =>
+    db.from('contact_phones')
+      .select('contact_id, is_primary, is_valid, normalized_phone, country_code')
+      .eq('organization_id', org).eq('is_primary', true)
+      .order('id', { ascending: true }).range(from, to)) : []
+
+  // validité des téléphones : un seul compteur par contact (numéro principal)
   let validPrimary = 0
   let invalidPrimary = 0
-  if (db) {
-    const { data: ph } = await db.from('contact_phones')
-      .select('contact_id, is_primary, is_valid')
-      .eq('organization_id', org)
-      .eq('is_primary', true)
-      .limit(20000)
-    const activeIds = new Set(lite.map(c => str(c.id)))
-    const seen = new Set<string>()
-    for (const p of ((ph ?? []) as unknown as { contact_id: string; is_primary: boolean | null; is_valid: boolean | null }[])) {
-      const contactId = str(p.contact_id)
-      if (!activeIds.has(contactId) || seen.has(contactId)) continue
+  const seen = new Set<string>()
+
+  // doublons : numéros primaires normalisés exploités par 2+ contacts actifs
+  const phoneContact = new Map<string, Set<string>>()
+
+  for (const p of phoneRows) {
+    const contactId = str(p.contact_id)
+    if (!activeIds.has(contactId)) continue
+    if (!seen.has(contactId)) {
       seen.add(contactId)
       if (p.is_valid === true) validPrimary++
       else invalidPrimary++
     }
-  }
-
-  // doublons : numéros primaires normalisés exploités par 2+ contacts actifs
-  let dupGroups = 0
-  const phoneContact = new Map<string, Set<string>>()
-  if (db) {
-    const { data: ph } = await db.from('contact_phones')
-      .select('contact_id, normalized_phone, is_primary')
-      .eq('organization_id', org)
-      .not('normalized_phone', 'is', null)
-      .limit(20000)
-    const merged = new Set(lite.map(c => str(c.id)))
-    for (const p of ((ph ?? []) as unknown as { contact_id: string; normalized_phone: string | null; is_primary: boolean | null }[])) {
-      if (!p.is_primary || !p.normalized_phone) continue
-      if (!merged.has(str(p.contact_id))) continue
+    if (p.normalized_phone) {
       const set = phoneContact.get(p.normalized_phone) ?? new Set<string>()
-      set.add(str(p.contact_id))
+      set.add(contactId)
       phoneContact.set(p.normalized_phone, set)
     }
   }
-  for (const set of phoneContact.values()) if (set.size > 1) dupGroups += set.size - 1
 
-  // provenance par indicatif (carte + stats par pays) — sans villes
-  const { byPhoneCountry } = await mapData(org)
+  let dupGroups = 0
+  let contactsInDupGroups = 0
+  for (const set of phoneContact.values()) {
+    if (set.size > 1) {
+      dupGroups += set.size - 1
+      contactsInDupGroups += set.size
+    }
+  }
+
+  // provenance par indicatif (carte + stats par pays) : réutilise les numéros
+  // principaux déjà chargés — pas de second passe sur la base
+  const byPhoneCountry = phoneCountryStats(phoneRows)
   const mapCountries = byPhoneCountry.map(p => ({ iso2: p.iso2, name: p.name, n: p.n, invalid: p.invalid }))
   const maxN = Math.max(1, ...byPhoneCountry.map(p => p.n))
 
@@ -111,10 +122,10 @@ export default async function DashboardPage() {
 
   const recentContacts = [...contacts].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 8)
 
-  const total = contacts.length
   const kpis = [
     { label: t.dash.total, value: total, href: '/contacts' },
-    { label: t.dash.unique, value: total, href: '/contacts' },
+    // « uniques » = contacts dont aucun autre contact ne partage le numéro principal
+    { label: t.dash.unique, value: total - contactsInDupGroups, href: '/contacts' },
     { label: t.dash.dupes, value: dupGroups, href: '/duplicates' },
     { label: t.dash.validPhones, value: validPrimary, href: '/contacts?phoneValid=valid' },
     { label: t.dash.invalidPhones, value: invalidPrimary, href: '/contacts?phoneValid=invalid' },

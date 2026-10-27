@@ -307,6 +307,42 @@ export async function dupDetectionData(orgId: string): Promise<{
   return { groups, contacts, totalDupes }
 }
 
+const CALLING: Record<string, string> = {
+  CM: '237', BF: '226', BJ: '229', CI: '225', GA: '241', CG: '242', CF: '236', TD: '235',
+  TG: '228', ML: '223', NE: '227', SN: '221', GM: '220', CD: '243', FR: '33', BE: '32',
+  CH: '41', CA: '1', US: '1', GB: '44', DE: '49', ES: '34', IT: '39', NL: '31', NG: '234',
+  GH: '233', MA: '212', DZ: '213', TN: '216', ZA: '27', KE: '254', AE: '971', IN: '91',
+  CN: '86', BR: '55', PT: '351', LU: '352', RU: '7', TR: '90', MX: '52', AU: '61',
+}
+
+/**
+ * Répartition par indicatif du numéro principal (provenance réelle des
+ * numéros). Utilisée par la page /map et par le dashboard, qui passent leurs
+ * lignes téléphones déjà chargées — évite un second chargement complet.
+ */
+export function phoneCountryStats(phoneRows: { country_code: string | null; is_valid: boolean | null }[]): {
+  iso2: string; callingCode: string; name: string; n: number; invalid: number
+}[] {
+  const phoneCount = new Map<string, { iso2: string; n: number; invalid: number }>()
+  for (const p of phoneRows) {
+    const iso = str(p.country_code).toUpperCase()
+    if (!iso) continue // inconnu : non projetable
+    const cur = phoneCount.get(iso) ?? { iso2: iso, n: 0, invalid: 0 }
+    cur.n++
+    if (!p.is_valid) cur.invalid++
+    phoneCount.set(iso, cur)
+  }
+  return [...phoneCount.entries()]
+    .map(([iso2, v]) => ({
+      iso2,
+      callingCode: CALLING[iso2] ?? '?',
+      name: countryLabel(iso2),
+      n: v.n,
+      invalid: v.invalid,
+    }))
+    .sort((a, b) => b.n - a.n)
+}
+
 /** Agrégats carte : volume par pays + villes (drill-down) + sources. */
 export async function mapData(orgId: string): Promise<{
   byCountry: { iso2: string; name: string; n: number }[]
@@ -317,17 +353,22 @@ export async function mapData(orgId: string): Promise<{
 }> {
   const db = serviceDb()
   if (!db) return { byCountry: [], byCity: [], sources: [], byPhoneCountry: [] }
-  const [contactsRes, phonesRes, { sources }] = await Promise.all([
-    db.from('contacts').select('country_iso2, city')
-      .eq('organization_id', orgId).is('merged_into', null).limit(10000),
-    db.from('contact_phones').select('country_code, is_valid, is_primary')
-      .eq('organization_id', orgId).eq('is_primary', true).limit(10000),
+  // agrégats paginés : une limite simple tronquerait silencieusement au-delà de
+  // 1000 lignes par requête, donc des chiffres faux sur les grosses bases
+  const [contactRows, phoneRows, { sources }] = await Promise.all([
+    selectAllRows<{ country_iso2: string | null; city: string | null }>((from, to) =>
+      db.from('contacts').select('country_iso2, city')
+        .eq('organization_id', orgId).is('merged_into', null)
+        .order('id', { ascending: true }).range(from, to)),
+    selectAllRows<{ country_code: string | null; is_valid: boolean | null }>((from, to) =>
+      db.from('contact_phones').select('country_code, is_valid, is_primary')
+        .eq('organization_id', orgId).eq('is_primary', true)
+        .order('id', { ascending: true }).range(from, to)),
     contactsFiltersData(orgId),
   ])
-  const data = contactsRes.data
   const countryCount = new Map<string, number>()
   const cityCount = new Map<string, { country_iso2: string; n: number }>()
-  for (const c of ((data ?? []) as unknown as { country_iso2: string | null; city: string | null }[])) {
+  for (const c of contactRows) {
     const iso = str(c.country_iso2).toUpperCase()
     if (iso) countryCount.set(iso, (countryCount.get(iso) ?? 0) + 1)
     const city = str(c.city)
@@ -345,32 +386,8 @@ export async function mapData(orgId: string): Promise<{
     .map(([key, v]) => ({ name: key.split('|')[0], country_iso2: v.country_iso2, n: v.n }))
     .sort((a, b) => b.n - a.n)
 
-  // Comptage par indicatif du téléphone principal : provenance réelle des numéros
-  const phoneCount = new Map<string, { iso2: string; n: number; invalid: number }>()
-  for (const p of ((phonesRes.data ?? []) as unknown as { country_code: string | null; is_valid: boolean | null; is_primary: boolean | null }[])) {
-    const iso = str(p.country_code).toUpperCase()
-    if (!iso) continue // inconnu : non projetable
-    const cur = phoneCount.get(iso) ?? { iso2: iso, n: 0, invalid: 0 }
-    cur.n++
-    if (!p.is_valid) cur.invalid++
-    phoneCount.set(iso, cur)
-  }
-  const CALLING: Record<string, string> = {
-    CM: '237', BF: '226', BJ: '229', CI: '225', GA: '241', CG: '242', CF: '236', TD: '235',
-    TG: '228', ML: '223', NE: '227', SN: '221', GM: '220', CD: '243', FR: '33', BE: '32',
-    CH: '41', CA: '1', US: '1', GB: '44', DE: '49', ES: '34', IT: '39', NL: '31', NG: '234',
-    GH: '233', MA: '212', DZ: '213', TN: '216', ZA: '27', KE: '254', AE: '971', IN: '91',
-    CN: '86', BR: '55', PT: '351', LU: '352', RU: '7', TR: '90', MX: '52', AU: '61',
-  }
-  const byPhoneCountry = [...phoneCount.entries()]
-    .map(([iso2, v]) => ({
-      iso2,
-      callingCode: CALLING[iso2] ?? '?',
-      name: countryLabel(iso2),
-      n: v.n,
-      invalid: v.invalid,
-    }))
-    .sort((a, b) => b.n - a.n)
+  // Comptage par indicatif du téléphone principal (helper partagé dashboard)
+  const byPhoneCountry = phoneCountryStats(phoneRows).sort((a, b) => b.n - a.n)
 
   return { byCountry, byCity, sources, byPhoneCountry }
 }
