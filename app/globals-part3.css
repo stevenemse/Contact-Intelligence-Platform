@@ -11,9 +11,9 @@
     gap: 12px;
     align-items: center;
   }
-  .landing-nav > div:first-child span {
-    max-width: 120px;
-    line-height: 1.25;
+  .landing-nav > div:first-child span,
+  .landing-nav > a:first-child span {
+    display: none;
   }
   .landing-nav nav {
     flex-shrink: 0;
@@ -25,6 +25,11 @@
   }
   .landing-nav nav .btn-ghost {
     display: none;
+  }
+  /* Les bascules (jour/nuit, langue) restent visibles : touches carrées, icône centrée. */
+  .landing-nav nav .btn-ghost.nav-toggle {
+    display: inline-flex;
+    padding: 7px;
   }
 }
 

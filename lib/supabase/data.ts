@@ -281,19 +281,27 @@ export async function listContacts(orgId: string, opts: ContactListOpts): Promis
   const phoneFilterActive = opts.phoneValid === 'valid' || opts.phoneValid === 'invalid'
   let phoneIds: string[] = []
   if (phoneFilterActive) {
+    // pagination explicite : le plafond PostgREST (1 000 lignes) tronquerait
+    // silencieusement les listes au-delà de 1 000 contacts
     const [validRes, nullRes, badRes] = await Promise.all([
-      db.from('contact_phones').select('contact_id').eq('organization_id', orgId)
-        .eq('is_primary', true).eq('is_valid', true).limit(20000),
-      db.from('contact_phones').select('contact_id').eq('organization_id', orgId)
-        .eq('is_primary', true).is('is_valid', null).limit(20000),
-      db.from('contact_phones').select('contact_id').eq('organization_id', orgId)
-        .eq('is_primary', true).eq('is_valid', false).limit(20000),
+      selectAllRows<{ contact_id: string }>((from, to) =>
+        db.from('contact_phones').select('contact_id').eq('organization_id', orgId)
+          .eq('is_primary', true).eq('is_valid', true)
+          .order('id', { ascending: true }).range(from, to)),
+      selectAllRows<{ contact_id: string }>((from, to) =>
+        db.from('contact_phones').select('contact_id').eq('organization_id', orgId)
+          .eq('is_primary', true).is('is_valid', null)
+          .order('id', { ascending: true }).range(from, to)),
+      selectAllRows<{ contact_id: string }>((from, to) =>
+        db.from('contact_phones').select('contact_id').eq('organization_id', orgId)
+          .eq('is_primary', true).eq('is_valid', false)
+          .order('id', { ascending: true }).range(from, to)),
     ])
     phoneIds = opts.phoneValid === 'valid'
-      ? [...new Set(((validRes.data ?? []) as unknown as { contact_id: string }[]).map(r => r.contact_id))]
+      ? [...new Set(validRes.map(r => r.contact_id))]
       : [...new Set([
-          ...(((nullRes.data ?? []) as unknown as { contact_id: string }[]).map(r => r.contact_id)),
-          ...(((badRes.data ?? []) as unknown as { contact_id: string }[]).map(r => r.contact_id)),
+          ...nullRes.map(r => r.contact_id),
+          ...badRes.map(r => r.contact_id),
         ])]
   }
   if (opts.country) query = query.eq('country_iso2', opts.country)

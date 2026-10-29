@@ -42,6 +42,9 @@
 /* ── Sidebar : rangée d'outils + déconnexion pleine largeur ──────────────── */
 .sidebar-tools { display: flex; gap: 6px; margin-top: 10px; }
 .sidebar-tools .sidebar-tool {
+  /* le bouton thème n'a pas la classe nav-item : le flex doit venir d'ici
+     sinon justify-content: center n'a aucun effet et l'icône reste à gauche */
+  display: flex;
   flex: 1 1 0;
   min-width: 0;
   align-items: center;

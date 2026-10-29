@@ -239,7 +239,7 @@ export default async function DashboardPage() {
               <li key={i.id} className="flex items-center justify-between gap-2">
                 <Link href="/imports" className="truncate hover:underline" style={{ color: 'var(--brand-deep)' }}>{i.file}</Link>
                 <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
-                  {i.added} ajoutés · {i.skipped} doublons · {i.at.slice(0, 10)}
+                  {i.added} ajoutés · {i.skipped} lignes déjà en base · {i.at.slice(0, 10)}
                 </span>
               </li>
             ))}

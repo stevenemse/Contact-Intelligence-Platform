@@ -20,6 +20,13 @@ export default async function DuplicatesPage() {
             ? `${groups.length} groupe(s) · ${totalDupes} contact(s) en excès à fusionner`
             : 'Détection par téléphone normalisé primaire.'}
         </p>
+        {groups.length === 0 && (
+          <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>
+            Rappel : les « lignes déjà en base » d’un import sont des doublons ignorés —
+            elles ne créent pas de fiche et n’apparaissent pas ici. Les contacts à fusionner
+            sont des fiches distinctes partageant le même numéro.
+          </p>
+        )}
       </div>
 
       <DupGroupList groups={groups} contacts={contacts} canWrite={writable} />

@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { z } from 'zod'
 import { getOrgContext, canWrite, type OrgCtx } from '@/lib/supabase/org-context'
 import { serviceDb } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/supabase/data'
-import { repairPhone } from '@/lib/contacts/fix-country-code'
+import { parsePhoneSmart, type CountryCode } from '@/lib/contacts/fix-country-code'
+import { countryIsoFromName } from '@/lib/supabase/page-data'
 import { quotaForPlan } from '@/lib/plans'
 import { IMPORT_CHUNK_ROWS, MAX_IMPORT_ROWS } from '@/lib/imports/limits'
 
@@ -17,6 +17,10 @@ type Db = NonNullable<ReturnType<typeof serviceDb>>
  *   chunk   → insère un lot de IMPORT_CHUNK_ROWS lignes rattachées à cet id ;
  *   finish  → clôture l'import (done / partial) et journalise.
  *
+ * Les règles de doublons choisies à l'étape 3 du wizard (detection par
+ * numéro/email, butoir « ignorer » ou « importer quand même ») sont stockées
+ * sur la ligne d'import et relues à chaque lot.
+ *
  * Chaque lot est autonome et s'ajoute aux compteurs de la ligne d'import :
  * si un envoi échoue au milieu, les lots déjà traités restent en base et le
  * rapport reflète exactement ce qui a été inséré.
@@ -27,7 +31,17 @@ type Db = NonNullable<ReturnType<typeof serviceDb>>
 export const maxDuration = 60
 
 const mappingSchema = z.record(z.string(), z.string())
-const dupRulesSchema = z.object({ keyPhone: z.boolean().default(true), keyEmail: z.boolean().default(true) })
+const dupRulesSchema = z.object({
+  keyPhone: z.boolean().default(true),
+  keyEmail: z.boolean().default(true),
+  /**
+   * Butoir de doublon : « skip » ignore la ligne déjà présente ; « duplicate »
+   * l'insère quand même — les fiches en double apparaissent alors au centre
+   * Doublons pour être fusionnées (cas du réimport d'un fichier existant).
+   */
+  onDuplicate: z.enum(['skip', 'duplicate']).default('skip'),
+})
+type DupRules = z.infer<typeof dupRulesSchema>
 
 const createSchema = z.object({
   action: z.literal('create'),
@@ -61,11 +75,13 @@ export type RowReport = {
   skipped: number
   invalidPhone: number
   invalidEmail: number
+  /** Numéros invalides réparés automatiquement (préfixes pays, scans). */
+  repaired: number
   errors: { row: number; reason: string }[]
 }
 
 function emptyReport(): RowReport {
-  return { inserted: 0, updated: 0, skipped: 0, invalidPhone: 0, invalidEmail: 0, errors: [] }
+  return { inserted: 0, updated: 0, skipped: 0, invalidPhone: 0, invalidEmail: 0, repaired: 0, errors: [] }
 }
 
 /** Message d'erreur honnête quand le corps de la requête est refusé. */
@@ -82,25 +98,6 @@ function describeBodyError(e: unknown): string {
 
 function getBy(target: string | undefined, row: Record<string, unknown>): string {
   return target ? String(row[target] ?? '').replace(/\s+/g, ' ').trim() : ''
-}
-
-function normalizePhone(raw: string) {
-  let parsed = parsePhoneNumberFromString(raw)
-  // si le numéro brut est irréparable, on tente une réparation automatique
-  // (préfixe manquant, zéro de rappel, chiffre inséré/retiré — cf. fix-country-code)
-  if (!parsed) {
-    const asE164 = raw.startsWith('+') ? raw : `+${raw.replace(/\D+/g, '')}`
-    const fix = repairPhone(asE164)
-    if (fix) parsed = parsePhoneNumberFromString(fix.e164)
-  }
-  if (!parsed) return null
-  return {
-    raw,
-    normalized: parsed.formatInternational(),
-    e164: parsed.format('E.164'),
-    cc: parsed.country ?? null,
-    valid: parsed.isValid(),
-  }
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -179,7 +176,7 @@ type ChunkInput = {
   /** Index de la première ligne du lot dans le fichier (pour les numéros de ligne du rapport). */
   offset: number
   mapping: Record<string, string>
-  dupRules: { keyPhone: boolean; keyEmail: boolean }
+  dupRules: DupRules
   source?: string
 }
 
@@ -192,7 +189,6 @@ type PreparedRow = {
   primaryPhone: string | null
   primaryEmail: string | null
 }
-
 /**
  * Importe un lot en trois temps :
  *  1. enrichissement — normalisation de chaque ligne, aucune requête ;
@@ -214,6 +210,25 @@ async function insertChunk(
   const report = emptyReport()
 
   // 1. enrichissement — normalisation de chaque ligne (aucun accès base)
+
+  // Pays de contexte par ligne : la colonne « Pays » du fichier (nom français,
+  // anglais ou code ISO) sert d'indice aux numéros locaux sans « + ».
+  const rowHint = rows.map(row => countryIsoFromName(getBy(mapping.country, row)))
+  // Indice de repli : pays dominant du lot (fichiers sans colonne pays)
+  const isoCount = new Map<string, number>()
+  for (const iso of rowHint) {
+    if (!iso) continue
+    isoCount.set(iso, (isoCount.get(iso) ?? 0) + 1)
+  }
+  let dominantIso: string | null = null
+  let dominantMax = 0
+  for (const [iso, n] of isoCount) {
+    if (n > dominantMax) {
+      dominantMax = n
+      dominantIso = iso
+    }
+  }
+
   const prepared: PreparedRow[] = []
   for (let idx = 0; idx < rows.length; idx++) {
     const row = rows[idx]
@@ -228,13 +243,22 @@ async function insertChunk(
       continue
     }
 
+    const hint = rowHint[idx] ?? dominantIso
+    const countryName = getBy(mapping.country, row) || null
+
     const phones: PreparedRow['phones'] = []
     if (rawPhone) {
       for (const piece of rawPhone.split(/[;,/|]+/).map(s => s.trim()).filter(Boolean)) {
-        const parsed = normalizePhone(piece)
-        if (!parsed) continue
-        phones.push(parsed)
-        if (!parsed.valid) report.invalidPhone++
+        const parsed = parsePhoneSmart(piece, hint as CountryCode | undefined ?? undefined)
+        if (!parsed.cc && !parsed.normalized) {
+          // totalement imparsable : compté invalide mais conservé brut
+          report.invalidPhone++
+          phones.push({ raw: parsed.raw, normalized: null, e164: null, cc: null, valid: false })
+          continue
+        }
+        if (parsed.repaired) report.repaired++
+        else if (!parsed.valid && parsed.cc) report.invalidPhone++
+        phones.push({ raw: parsed.raw, normalized: parsed.normalized, e164: parsed.e164, cc: parsed.iso2, valid: parsed.valid })
       }
     }
     const emails: PreparedRow['emails'] = []
@@ -256,8 +280,8 @@ async function insertChunk(
         company: getBy(mapping.company, row) || null,
         job_title: getBy(mapping.job_title, row) || null,
         source: getBy(mapping.source, row) || (input.source || null),
-        country_iso2: getBy(mapping.country, row).toUpperCase().slice(0, 2) || null,
-        country_name: getBy(mapping.country, row) || null,
+        country_iso2: hint || null,
+        country_name: countryName,
         city: getBy(mapping.city, row) || null,
         region: getBy(mapping.region, row) || null,
         import_id: importId,
@@ -271,11 +295,13 @@ async function insertChunk(
   }
 
   // 2. vérification ciblée : uniquement les valeurs de ce lot, par paquets bornés
+  // (mode « duplicate » : inutile d'interroger la base, tout est inséré)
+  const checkDb = dupRules.onDuplicate === 'skip'
   const keys = {
-    phones: dupRules.keyPhone
+    phones: checkDb && dupRules.keyPhone
       ? [...new Set(prepared.map(r => r.primaryPhone).filter((v): v is string => Boolean(v)))]
       : [],
-    emails: dupRules.keyEmail
+    emails: checkDb && dupRules.keyEmail
       ? [...new Set(prepared.map(r => r.primaryEmail).filter((v): v is string => Boolean(v)))]
       : [],
   }
@@ -285,11 +311,11 @@ async function insertChunk(
   const seen = { phones: new Set<string>(), emails: new Set<string>() }
   const contactsToInsert: PreparedRow[] = []
   for (const p of prepared) {
-    if (dupRules.keyPhone && p.primaryPhone && (inDb.phones.has(p.primaryPhone) || seen.phones.has(p.primaryPhone))) {
+    if (checkDb && dupRules.keyPhone && p.primaryPhone && (inDb.phones.has(p.primaryPhone) || seen.phones.has(p.primaryPhone))) {
       report.skipped++
       continue
     }
-    if (dupRules.keyEmail && p.primaryEmail && (inDb.emails.has(p.primaryEmail) || seen.emails.has(p.primaryEmail))) {
+    if (checkDb && dupRules.keyEmail && p.primaryEmail && (inDb.emails.has(p.primaryEmail) || seen.emails.has(p.primaryEmail))) {
       report.skipped++
       continue
     }
@@ -383,6 +409,9 @@ async function appendChunk(db: Db, ctx: OrgCtx, body: z.infer<typeof chunkSchema
     dupRules: {
       keyPhone: Boolean((batch.duplicate_rules as { keyPhone?: boolean } | null)?.keyPhone),
       keyEmail: Boolean((batch.duplicate_rules as { keyEmail?: boolean } | null)?.keyEmail),
+      onDuplicate: (batch.duplicate_rules as { onDuplicate?: 'skip' | 'duplicate' } | null)?.onDuplicate === 'duplicate'
+        ? 'duplicate' as const
+        : 'skip' as const,
     },
     source: (batch.source as string | null) ?? undefined,
   })

@@ -4,6 +4,63 @@ import { selectAllRows } from './pagination'
 import { str, num } from './helpers'
 import type { DbContact } from './data'
 
+export function normalizeCountryName(name: string): string {
+  return String(name ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Alias fréquent dans les fichiers clients (noms anglais, variantes) → ISO. */
+const COUNTRY_ALIASES: Record<string, string> = {
+  'ivory coast': 'CI',
+  'cote d ivoire': 'CI',
+  cameroon: 'CM',
+  burkina: 'BF',
+  senegal: 'SN',
+  france: 'FR',
+  belgium: 'BE',
+  'switzerland': 'CH',
+  canada: 'CA',
+  'united states': 'US',
+  usa: 'US',
+  'united kingdom': 'GB',
+  uk: 'GB',
+  germany: 'DE',
+  spain: 'ES',
+  italy: 'IT',
+  netherlands: 'NL',
+  morocco: 'MA',
+  algeria: 'DZ',
+  tunisia: 'TN',
+  nigeria: 'NG',
+  ghana: 'GH',
+  mali: 'ML',
+  togo: 'TG',
+  benin: 'BJ',
+  gabon: 'GA',
+  congo: 'CG',
+  'rd congo': 'CD',
+  'democratic republic of the congo': 'CD',
+}
+
+export function countryIsoFromName(name: string): string | null {
+  const raw = String(name ?? '').trim()
+  if (!raw) return null
+  const up = raw.toUpperCase()
+  if (/^[A-Z]{2}$/.test(up)) return up
+  const norm = normalizeCountryName(raw)
+  if (!norm) return null
+  if (COUNTRY_ALIASES[norm]) return COUNTRY_ALIASES[norm]
+  for (const [value, iso2] of Object.entries(COUNTRY_NAMES)) {
+    if (iso2.length === 2 && normalizeCountryName(value) === norm) return iso2
+  }
+  return null
+}
+
 export const COUNTRY_NAMES: Record<string, string> = {
   CM: 'Cameroun', FR: 'France', BE: 'Belgique', CH: 'Suisse', CA: 'Canada', US: 'États-Unis',
   GB: 'Royaume-Uni', DE: 'Allemagne', ES: 'Espagne', IT: 'Italie', NL: 'Pays-Bas', PT: 'Portugal',
@@ -222,14 +279,32 @@ export async function dupDetectionData(orgId: string): Promise<{
 }> {
   const db = serviceDb()
   if (!db) return { groups: [], contacts: {}, totalDupes: 0 }
-  const [phRes, emRes] = await Promise.all([
-    db.from('contact_phones').select('contact_id, normalized_phone, is_primary, is_valid')
-      .eq('organization_id', orgId).not('normalized_phone', 'is', null).limit(20000),
-    db.from('contact_emails').select('contact_id, email, is_primary').eq('organization_id', orgId).limit(20000),
+  // PostgREST plafonne chaque requête à 1 000 lignes : une limite simple
+  // tronquerait silencieusement au-delà — c'est ce qui rendait la page vide
+  // alors que le compteur du dashboard (paginé) comptait des doublons.
+  // Tous les chargements utilisent donc la pagination explicite, ordre stable.
+  const [phones, emails, contactStatus] = await Promise.all([
+    selectAllRows<{ contact_id: string; normalized_phone: string | null; is_primary: boolean | null; is_valid: boolean | null }>((from, to) =>
+      db.from('contact_phones').select('contact_id, normalized_phone, is_primary, is_valid')
+        .eq('organization_id', orgId).not('normalized_phone', 'is', null)
+        .order('id', { ascending: true }).range(from, to)),
+    selectAllRows<{ contact_id: string; email: string | null; is_primary: boolean | null }>((from, to) =>
+      db.from('contact_emails').select('contact_id, email, is_primary')
+        .eq('organization_id', orgId)
+        .order('id', { ascending: true }).range(from, to)),
+    selectAllRows<{ id: string; merged_into: string | null }>((from, to) =>
+      db.from('contacts').select('id, merged_into')
+        .eq('organization_id', orgId)
+        .order('id', { ascending: true }).range(from, to)),
   ])
+  // mêmes critères que le compteur du dashboard : contacts actifs uniquement
+  const activeIds = new Set(
+    contactStatus.filter(c => !c.merged_into).map(c => str(c.id))
+  )
   const byContactId = new Map<string, { ph: string | null; phones: DupPhone[]; emails: { email: string }[] }>()
-  for (const p of ((phRes.data ?? []) as unknown as { contact_id: string; normalized_phone: string | null; is_primary: boolean | null; is_valid: boolean | null }[])) {
+  for (const p of phones) {
     const cid = str(p.contact_id)
+    if (!activeIds.has(cid)) continue
     const entry = byContactId.get(cid) ?? { ph: null, phones: [], emails: [] }
     if (p.normalized_phone) {
       entry.phones.push({ phone: p.normalized_phone, isPrimary: Boolean(p.is_primary), isValid: Boolean(p.is_valid) })
@@ -237,8 +312,9 @@ export async function dupDetectionData(orgId: string): Promise<{
     }
     byContactId.set(cid, entry)
   }
-  for (const e of ((emRes.data ?? []) as unknown as { contact_id: string; email: string | null; is_primary: boolean | null }[])) {
+  for (const e of emails) {
     const cid = str(e.contact_id)
+    if (!activeIds.has(cid)) continue
     const entry = byContactId.get(cid) ?? { ph: null, phones: [], emails: [] }
     entry.emails.push({ email: str(e.email) })
     byContactId.set(cid, entry)

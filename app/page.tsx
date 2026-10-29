@@ -9,6 +9,40 @@ import { getAuthUser } from '@/lib/supabase/server'
 import ThemeToggle from '@/components/theme-toggle'
 import LanguageToggle from '@/components/language-toggle'
 
+/** Libellés traduits des pastilles de la section avant / après. */
+type ProofCopy = {
+  flagDup: string; flagBad: string; flagEmpty: string
+  fixNorm: string; fixMerge: string; fixCity: string
+}
+type ProofFlag = 'dup' | 'bad' | 'empty' | 'merge' | 'norm' | 'city'
+
+function flagLabel(flag: ProofFlag, p: ProofCopy): string {
+  switch (flag) {
+    case 'dup': return p.flagDup
+    case 'bad': return p.flagBad
+    case 'empty': return p.flagEmpty
+    case 'merge': return p.fixMerge
+    case 'norm': return p.fixNorm
+    case 'city': return p.fixCity
+  }
+}
+
+/** Démonstration : extrait type d'un fichier brut (5 lignes dont doublons/erreurs). */
+const BEFORE_ROWS: { name: string; phone: string; city: string; flag: ProofFlag | null }[] = [
+  { name: 'Amina Koné', phone: '+237 6 55 12 34', city: 'Douala', flag: null },
+  { name: 'amina koné', phone: '655 12 34', city: 'Douala', flag: 'dup' },
+  { name: 'Jean Moussa', phone: '+221 77 123 4', city: 'Dakar', flag: 'bad' },
+  { name: 'jean moussa', phone: '+221 77 123 4', city: 'Dakar', flag: 'dup' },
+  { name: 'Fatou Diop', phone: '+233 24 555 019', city: '—', flag: 'empty' },
+]
+
+/** Même extrait après import : doublons fusionnés, numéros normalisés, villes complétées. */
+const AFTER_ROWS: { name: string; phone: string; city: string; flag: ProofFlag | null }[] = [
+  { name: 'Amina Koné', phone: '+237 655 12 34', city: 'Douala, Cameroun', flag: 'merge' },
+  { name: 'Jean Moussa', phone: '+221 77 123 45', city: 'Dakar, Sénégal', flag: 'norm' },
+  { name: 'Fatou Diop', phone: '+233 24 555 019', city: 'Accra, Ghana', flag: 'city' },
+]
+
 export default async function LandingPage() {
   const store = await cookies()
   const locale = store.get('locale')?.value === 'en' ? 'en' : 'fr'
@@ -32,8 +66,8 @@ export default async function LandingPage() {
         </div>
         <nav style={{display:'flex',alignItems:'center',gap:8}}>
           <Link href="/pricing" className="btn btn-ghost btn-sm">{t.pricing}</Link>
-          <ThemeToggle className="btn btn-ghost btn-sm" style={{ justifyContent: 'center' }} />
-          <LanguageToggle className="btn btn-ghost btn-sm" style={{ justifyContent: 'center' }} />
+          <ThemeToggle className="btn btn-ghost btn-sm nav-toggle" style={{ justifyContent: 'center' }} />
+          <LanguageToggle className="btn btn-ghost btn-sm nav-toggle" style={{ justifyContent: 'center' }} />
           {user ? (
             <Link href="/dashboard" className="btn btn-primary btn-sm">{workspaceLabel}</Link>
           ) : (
@@ -50,6 +84,10 @@ export default async function LandingPage() {
           {t.hero1}<br /><span style={{ color:'var(--brand)' }}>{t.hero2}</span>
         </h1>
         <p className="fade-up delay-2" style={{ margin:'24px auto 0', fontSize:18, lineHeight:1.6, color:'var(--text-muted)', maxWidth:620 }}>{t.heroSub}</p>
+        <div className="fade-up delay-2" style={{ marginTop:18, display:'flex', justifyContent:'center' }}>
+          <p style={{ margin:0, padding:'8px 16px', borderRadius:14, background:'var(--brand-tint)', border:'1px solid var(--brand-tint-2)', color:'var(--brand-deep)', fontSize:14.5, fontWeight:600, lineHeight:1.45, maxWidth:640, textAlign:'center' }}>{t.heroPos}</p>
+        </div>
+        <p className="fade-up delay-2" style={{ margin:'12px auto 0', fontSize:14, lineHeight:1.6, color:'var(--text-muted)', maxWidth:640 }}>{t.heroAudience}</p>
         <div className="fade-up delay-3" style={{marginTop:36,display:'flex',alignItems:'center',justifyContent:'center',gap:12,flexWrap:'wrap'}}>
           <Link href={user ? '/dashboard' : '/register'} className="btn btn-primary" style={{padding:'12px 28px',fontSize:15}}>{user ? workspaceLabel : t.ctaCreate}</Link>
           {!user && <Link href="/login" className="btn btn-ghost" style={{padding:'12px 24px',fontSize:15}}>{t.ctaLogin}</Link>}
@@ -74,6 +112,40 @@ export default async function LandingPage() {
         <div className="landing-stats-inner">
           {stats.map((s) => <div key={s.label}><strong>{s.value}</strong><span>{s.label}</span></div>)}
         </div>
+      </section>
+
+      <section style={{ maxWidth:1080, margin:'0 auto', padding:'80px 32px 40px' }}>
+        <h2 style={{ fontSize:32, fontWeight:700, color:'var(--text-primary)', letterSpacing:'-.03em', marginBottom:12 }}>{t.proof.title}</h2>
+        <p style={{ fontSize:15, color:'var(--text-muted)', marginBottom:32, maxWidth:640 }}>{t.proof.sub}</p>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:20 }}>
+          {[
+            { label: t.proof.before, file: 'clients_bruts.csv', rows: BEFORE_ROWS, after: false },
+            { label: t.proof.after, file: 'base active', rows: AFTER_ROWS, after: true },
+          ].map((col) => (
+            <div key={col.label} className="glass-card" style={{ padding:0, overflow:'hidden' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'12px 16px', borderBottom:'1px solid var(--border)', background: col.after ? 'var(--brand-tint)' : 'var(--bg-sunken)' }}>
+                <strong style={{ fontSize:13, color:'var(--text-primary)' }}>{col.label}</strong>
+                <span className="text-xs" style={{ color:'var(--text-muted)', fontFamily:'var(--mono, monospace)' }} translate="no">{col.file}</span>
+              </div>
+              <table className="data-table text-xs" style={{ margin:0 }}>
+                <thead><tr><th>{t.proof.hName}</th><th>{t.proof.hPhone}</th><th>{t.proof.hCity}</th><th aria-label={col.after ? t.proof.after : t.proof.before} /></tr></thead>
+                <tbody>
+                  {col.rows.map((r, i) => (
+                    <tr key={i}>
+                      <td>{r.name}</td>
+                      <td style={{ whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>{r.phone}</td>
+                      <td>{r.city}</td>
+                      <td style={{ whiteSpace:'nowrap' }}>
+                        {r.flag && <span style={{ fontWeight:600, color: col.after ? 'var(--brand)' : 'var(--danger)' }}>{flagLabel(r.flag, t.proof)}</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
+        <p className="field-hint" style={{ textAlign:'center', marginTop:16 }}>{t.proof.note}</p>
       </section>
 
       <section id="features" style={{maxWidth:1080,margin:'0 auto',padding:'80px 32px 96px',scrollMarginTop:88}}>

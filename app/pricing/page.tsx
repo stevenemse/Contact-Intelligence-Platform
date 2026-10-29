@@ -34,8 +34,8 @@ export default async function PricingPage() {
           <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }} translate="no">Contact Intelligence</span>
         </Link>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ThemeToggle className="btn btn-ghost btn-sm" style={{ justifyContent: 'center' }} />
-          <LanguageToggle className="btn btn-ghost btn-sm" style={{ justifyContent: 'center' }} />
+          <ThemeToggle className="btn btn-ghost btn-sm nav-toggle" style={{ justifyContent: 'center' }} />
+          <LanguageToggle className="btn btn-ghost btn-sm nav-toggle" style={{ justifyContent: 'center' }} />
           {ctx
             ? <Link href="/dashboard" className="btn btn-primary btn-sm">{locale === 'fr' ? 'Mon espace' : 'My workspace'}</Link>
             : <Link href="/register" className="btn btn-primary btn-sm">{t.landingFull.start}</Link>}

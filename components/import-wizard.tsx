@@ -7,7 +7,7 @@ import { parseCsvPreview } from '@/lib/contacts/normalize'
 import { IMPORT_CHUNK_ROWS, MAX_IMPORT_ROWS } from '@/lib/imports/limits'
 
 type Mapping = Record<string, string>
-type DupRules = { keyPhone: boolean; keyEmail: boolean; onDuplicate: 'skip' | 'update' }
+type DupRules = { keyPhone: boolean; keyEmail: boolean; onDuplicate: 'skip' | 'duplicate' }
 
 const TARGETS: { key: string; label: string; hint: string }[] = [
   { key: 'full_name', label: 'Nom complet', hint: '« Jean Dupont »' },
@@ -25,13 +25,13 @@ const TARGETS: { key: string; label: string; hint: string }[] = [
 
 const STEPS = ['Fichier', 'Aperçu', 'Mapping', 'Doublons', 'Validation', 'Traitement', 'Rapport']
 
-type Report = { inserted: number; updated: number; skipped: number; invalidPhone: number; invalidEmail: number; errors: { row: number; reason: string }[] }
+type Report = { inserted: number; updated: number; skipped: number; invalidPhone: number; invalidEmail: number; repaired: number; errors: { row: number; reason: string }[] }
 type ImportResponse = { importId?: string; report?: Partial<Report> }
 
 const fmt = (n: number) => n.toLocaleString('fr-FR')
 
 function emptyReport(): Report {
-  return { inserted: 0, updated: 0, skipped: 0, invalidPhone: 0, invalidEmail: 0, errors: [] }
+  return { inserted: 0, updated: 0, skipped: 0, invalidPhone: 0, invalidEmail: 0, repaired: 0, errors: [] }
 }
 
 /** Additionne le rapport cumulé avec le rapport partiel d'un lot. */
@@ -42,6 +42,7 @@ function mergeReport(into: Report, part: Partial<Report> | undefined) {
   into.skipped += part.skipped ?? 0
   into.invalidPhone += part.invalidPhone ?? 0
   into.invalidEmail += part.invalidEmail ?? 0
+  into.repaired += part.repaired ?? 0
   into.errors.push(...(part.errors ?? []))
 }
 
@@ -149,7 +150,7 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
         fileName: file.name,
         source: sourceName || undefined,
         mapping,
-        dupRules: { keyPhone: dupRules.keyPhone, keyEmail: dupRules.keyEmail },
+        dupRules,
         totalRows: rows.length,
       })
       if (!created.importId) throw new Error('Le serveur n’a pas renvoyé d’identifiant d’import.')
@@ -378,6 +379,7 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
                 </span>
               </label>
             </div>
+            <p className="field-hint">Les règles s’appliquent aux lignes du fichier déjà présentes en base et aux doublons internes du fichier.</p>
           </div>
 
           <div>
@@ -387,16 +389,16 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
                 <input type="radio" name="dup" checked={dupRules.onDuplicate === 'skip'}
                   onChange={() => setDupRules(r => ({ ...r, onDuplicate: 'skip' }))} />
                 <span className="check-body">
-                  <span className="check-title">Ignorer</span>
-                  <span className="check-desc">La fiche existante n’est pas modifiée.</span>
+                  <span className="check-title">Ignorer (recommandé)</span>
+                  <span className="check-desc">La ligne déjà présente est comptée doublon et n’est pas réimportée.</span>
                 </span>
               </label>
-              <label className={`check-row ${dupRules.onDuplicate === 'update' ? 'is-selected' : ''}`}>
-                <input type="radio" name="dup" checked={dupRules.onDuplicate === 'update'}
-                  onChange={() => setDupRules(r => ({ ...r, onDuplicate: 'update' }))} />
+              <label className={`check-row ${dupRules.onDuplicate === 'duplicate' ? 'is-selected' : ''}`}>
+                <input type="radio" name="dup" checked={dupRules.onDuplicate === 'duplicate'}
+                  onChange={() => setDupRules(r => ({ ...r, onDuplicate: 'duplicate' }))} />
                 <span className="check-body">
-                  <span className="check-title">Mettre à jour</span>
-                  <span className="check-desc">Les champs vides sont complétés, les changements sont journalisés.</span>
+                  <span className="check-title">Importer quand même</span>
+                  <span className="check-desc">Les fiches en double sont aussi créées : vous les fusionnez ensuite au centre Doublons.</span>
                 </span>
               </label>
             </div>
@@ -440,7 +442,7 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
                 {dupRules.keyPhone && dupRules.keyEmail ? ' + ' : ''}
                 {dupRules.keyEmail ? 'email' : ''}
                 {!dupRules.keyPhone && !dupRules.keyEmail ? 'aucune détection' : ''}
-                {' · '}{dupRules.onDuplicate === 'skip' ? 'ignorer' : 'mettre à jour'}
+                {' · '}{dupRules.onDuplicate === 'skip' ? 'ignorer' : 'importer quand même'}
               </dd>
             </div>
           </dl>
@@ -491,7 +493,8 @@ export default function ImportWizard({ orgId }: { orgId: string; canWrite?: bool
             <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Nouveaux contacts</p><p className="metric" style={{ color: 'var(--success)' }}>{report.inserted}</p></div>
             <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Mises à jour</p><p className="metric">{report.updated}</p></div>
             <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Doublons ignorés</p><p className="metric">{report.skipped}</p></div>
-            <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Numéros invalides</p><p className="metric" style={{ color: 'var(--danger)' }}>{report.invalidPhone}</p></div>
+            <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Numéros réparés</p><p className="metric" style={{ color: 'var(--success)' }}>{report.repaired}</p></div>
+            <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Numéros invalides</p><p className="metric" style={{ color: report.invalidPhone > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>{report.invalidPhone}</p></div>
             <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Emails invalides</p><p className="metric" style={{ color: 'var(--danger)' }}>{report.invalidEmail}</p></div>
             <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Erreurs</p><p className="metric" style={{ color: 'var(--danger)' }}>{report.errors.length}</p></div>
           </div>
