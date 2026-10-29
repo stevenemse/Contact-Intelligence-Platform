@@ -22,7 +22,7 @@ const ORG_TABLES = [
  * Purge sévère : supprime toute la donnée d'une organisation par sous-entités
  * puis les contacts par lots (le delete massif peut dépasser le timeout PG).
  */
-async function wipeOrg(orgId: string) {
+async function wipeOrg(orgId) {
   for (const t of ['contact_emails', 'contact_phones', 'contact_tags', 'contact_changes', 'merge_logs', 'activity_logs', 'import_batches', 'export_runs']) {
     await db.from(t).delete().eq('organization_id', orgId)
   }
