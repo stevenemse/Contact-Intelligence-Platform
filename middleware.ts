@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
 
   // Protection des pages uniquement : les /api/* répondent en JSON 401/503,
   // jamais une redirection HTML qui casserait les fetch des composants.
-  const isPublic = pathname === '/login' || pathname === '/register' || pathname === '/reset' || pathname === '/' || pathname === '/pricing'
+  const isPublic = pathname === '/login' || pathname === '/register' || pathname === '/reset' || pathname === '/' || pathname === '/pricing' || pathname === '/contact'
   if (!isApi && !isPublic && pathname !== '/setup' && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }

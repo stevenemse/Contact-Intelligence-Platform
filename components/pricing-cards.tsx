@@ -37,7 +37,7 @@ export default function PricingCards({ currentPlan }: { currentPlan?: string | n
           const price = yearly ? plan.yearly : plan.monthly
           const features = FEATURES_BY_PLAN[plan.id]
           const actionHref = authenticated
-            ? plan.id === 'enterprise' ? 'mailto:contact@contactintelligence.app?subject=Plan%20Entreprise' : '/settings/billing'
+            ? plan.id === 'enterprise' ? '/contact' : '/settings/billing'
             : `/register?plan=${plan.id}`
           return (
             <article key={plan.id} className={`kpi-card pricing-card${plan.id === 'starter' ? ' pricing-card-featured' : ''}`}>
@@ -59,9 +59,15 @@ export default function PricingCards({ currentPlan }: { currentPlan?: string | n
                 )}
               </div>
               <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
-                {plan.contacts < 0 ? `∞ ${p.contactsLabel}` : `${plan.contacts.toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')} ${p.contactsLabel}`}
-                {' · '}
-                {plan.seats < 0 ? `∞ ${p.seats}` : `${plan.seats} ${p.seats}`}
+                {plan.id === 'enterprise'
+                  ? (locale === 'fr' ? '100 000 → 1M+ contacts · paliers personnalisés · ∞ sièges' : '100k → 1M+ contacts · custom tiers · ∞ seats')
+                  : (
+                    <>
+                      {plan.contacts < 0 ? `∞ ${p.contactsLabel}` : `${plan.contacts.toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')} ${p.contactsLabel}`}
+                      {' · '}
+                      {plan.seats < 0 ? `∞ ${p.seats}` : `${plan.seats} ${p.seats}`}
+                    </>
+                  )}
               </p>
               <ul className="pricing-feature-list">
                 {features.map(f => (

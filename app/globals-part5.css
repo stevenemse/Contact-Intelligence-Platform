@@ -1,0 +1,72 @@
+/* ── Landing : fond décoratif grille + halos floutés ─────────────────────────
+   Décor purement visuel : calque absolu en arrière-plan, pointer-events none,
+   contenu au-dessus (form des sections .landing-hero-bg). Les halos dérivent
+   lentement (30–55 s) pour rester perceptibles sans distraire ; le motif de
+   grille s'efface vers les bords (mask radial). Thème sombre : mêmes tokens,
+   la transparence fait le travail. ─────────────────────────────────────── */
+
+.landing-hero-bg > .landing-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* grille fine, masquée au centre-haut pour laisser respirer le hero */
+.landing-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--text-primary) 4.5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text-primary) 4.5%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 18%, transparent 0%, #000 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 18%, transparent 0%, #000 100%);
+}
+
+/* halos : disques très flous, opacité basse, dérive lente en boucle */
+.landing-backdrop i {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: .5;
+}
+.landing-backdrop i:nth-child(1) {
+  width: 520px; height: 520px;
+  top: -140px; left: -120px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%);
+  animation: halo-drift-1 42s ease-in-out infinite alternate;
+}
+.landing-backdrop i:nth-child(2) {
+  width: 430px; height: 430px;
+  top: 8%; right: -150px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 12%, transparent), transparent 70%);
+  animation: halo-drift-2 55s ease-in-out infinite alternate;
+}
+.landing-backdrop i:nth-child(3) {
+  width: 560px; height: 560px;
+  bottom: -220px; left: 32%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 10%, transparent), transparent 72%);
+  animation: halo-drift-3 48s ease-in-out infinite alternate;
+}
+
+@keyframes halo-drift-1 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(90px, 60px) scale(1.12); }
+}
+@keyframes halo-drift-2 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(-70px, 90px) scale(.92); }
+}
+@keyframes halo-drift-3 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(-80px, -70px) scale(1.08); }
+}
+
+/* accessibilité / sobriété : pas d'animation sur demande */
+@media (prefers-reduced-motion: reduce) {
+  .landing-backdrop i { animation: none; }
+}

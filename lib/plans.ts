@@ -51,6 +51,21 @@ export function isPaidPlan(id: string): boolean {
   return id === 'starter' || id === 'business'
 }
 
+/**
+ * Enterprise est facturé par paliers, pas « illimité par défaut » : à
+ * l'attribution, le super-admin choisit 100k, 1M, une valeur personnalisée
+ * ou illimité (-1). Les valeurs sont écrites dans `organizations.contact_quota`.
+ */
+export const ENTERPRISE_TIERS = [
+  { label: '100 000', value: 100_000 },
+  { label: '1 000 000', value: 1_000_000 },
+  { label: 'Personnalisé', value: 0 },
+  { label: 'Illimité', value: -1 },
+] as const
+
+/** Plafond d'un quota Enterprise personnalisé (garde-fou anti-faute de frappe). */
+export const ENTERPRISE_MAX_QUOTA = 50_000_000
+
 /** True when a workspace plan includes a given application capability. */
 export function hasPlanFeature(plan: string, feature: PlanFeature): boolean {
   return PLAN_RANK[getPlan(plan).id] >= PLAN_RANK[FEATURE_MINIMUM_PLAN[feature]]

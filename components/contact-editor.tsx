@@ -23,7 +23,17 @@ export default function ContactEditor({ orgId: _orgId, contact, canWrite, countr
 }) {
   void _orgId
   const router = useRouter()
-  const [f, setF] = useState({ ...contact })
+  // Un import peut fournir un seul champ « nom complet » : sans ce repli, les
+  // champs Prénom/Nom s'affichent vides et « Enregistrer » effacerait le nom.
+  const [f, setF] = useState(() => {
+    const initial = { ...contact }
+    if (!initial.first_name && !initial.last_name && contact.full_name) {
+      const parts = contact.full_name.trim().split(/\s+/)
+      initial.first_name = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0]
+      initial.last_name = parts.length > 1 ? parts[parts.length - 1] : null
+    }
+    return initial
+  })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)

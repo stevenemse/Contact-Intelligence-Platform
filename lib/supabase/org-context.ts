@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { connection } from 'next/server'
 import { getAuthUser, serviceDb } from './server'
 import { quotaForPlan } from '@/lib/plans'
+import { resolveSubscription, type SubscriptionState } from '@/lib/billing/subscription'
 
 export type Role = 'owner' | 'admin' | 'manager' | 'member' | 'viewer'
 
@@ -12,9 +13,11 @@ export type OrgCtx = {
   email: string
   orgId: string
   orgName: string
+  /** Plan appliqué : `free` si l'abonnement accordé par l'admin est échu. */
   orgPlan: string
   quota: number
   role: Role
+  subscription: SubscriptionState
 }
 
 /**
@@ -57,21 +60,28 @@ export async function getOrgContext(): Promise<OrgCtx | null> {
 
   const { data: org } = await db
     .from('organizations')
-    .select('name, plan, contact_quota')
+    .select('name, plan, contact_quota, subscription_status, current_period_end')
     .eq('id', membership.organizationId)
     .maybeSingle()
   if (!org) return null
+
+  // Un abonnement échu se comporte comme un plan gratuit : les fonctions
+  // payantes se verrouillent et le quota redescend, sans toucher aux données.
+  const subscription = resolveSubscription(org)
 
   return {
     userId: user.id,
     email: user.email,
     orgId: membership.organizationId,
     orgName: String(org.name ?? ''),
-    orgPlan: String(org.plan ?? 'free'),
+    orgPlan: subscription.effectivePlan,
     // Quota stocké s'il existe (grant admin, organisations historiques),
     // sinon celui du plan : plus de 5000 codé en dur hors du catalogue.
-    quota: Number(org.contact_quota ?? quotaForPlan(String(org.plan ?? 'free'))),
+    quota: subscription.effectivePlan === 'free'
+      ? quotaForPlan('free')
+      : Number(org.contact_quota ?? quotaForPlan(subscription.effectivePlan)),
     role: membership.role,
+    subscription,
   }
 }
 

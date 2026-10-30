@@ -17,7 +17,9 @@ export default function SettingsForm({ isOwner, isAdmin, orgName, plan, quota, c
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
-  const pct = Math.min(100, Math.round((contactCount / Math.max(1, quota)) * 100))
+  // quota < 0 = illimité (plan enterprise) : pas de jauge à remplir.
+  const unlimited = quota < 0
+  const pct = unlimited ? 0 : Math.min(100, Math.round((contactCount / Math.max(1, quota)) * 100))
 
   async function save() {
     setBusy(true); setSaved(false); setMsg(null)
@@ -50,12 +52,12 @@ export default function SettingsForm({ isOwner, isAdmin, orgName, plan, quota, c
       <div>
         <div className="flex items-center justify-between text-sm mb-1">
           <span className="text-[color:var(--text-secondary)]">Quota de contacts ({plan})</span>
-          <span className="font-medium">{contactCount} / {quota.toLocaleString('fr-FR')}</span>
+          <span className="font-medium">{contactCount.toLocaleString('fr-FR')} / {unlimited ? 'illimité' : quota.toLocaleString('fr-FR')}</span>
         </div>
         <div className="w-full bg-[color:var(--track)] rounded-full h-2.5">
           <div className={`h-2.5 rounded-full ${pct > 90 ? 'bg-red-500' : 'bg-teal-700'}`} style={{ width: `${pct}%` }} />
         </div>
-        {pct > 90 && (
+        {pct > 90 && !unlimited && (
           <p className="text-xs text-[color:var(--danger)] mt-1">Quota presque atteint — pensez à migrer vers un plan supérieur.</p>
         )}
       </div>

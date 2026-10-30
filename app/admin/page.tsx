@@ -4,6 +4,7 @@ import { serviceDb } from '@/lib/supabase/server'
 import { isSuperAdmin } from '@/lib/super-admin'
 import { getDictionary } from '@/lib/i18n/dictionaries'
 import AdminBilling, { type AdminStats, type RecentAccount } from '@/components/admin-billing'
+import { resolveSubscription } from '@/lib/billing/subscription'
 
 export const instant = false
 
@@ -89,6 +90,13 @@ export default async function AdminPage() {
     hasStripe: !!o.stripe_customer_id,
     billingEmail: o.billing_email,
     contactCount: o.contacts?.[0]?.count ?? 0,
+    // Échéance comparée à maintenant côté serveur : le client n'a plus à
+    // manipuler d'horloge pour afficher « expiré » ou les jours restants.
+    subscription: resolveSubscription({
+      plan: o.plan,
+      subscription_status: o.subscription_status,
+      current_period_end: o.current_period_end,
+    }),
   }))
   // organisations créées sur les 30 derniers jours
   const since30Num = Date.parse(since30)

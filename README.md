@@ -53,10 +53,24 @@ supabase/schema.sql       # schéma complet à exécuter une fois dans le SQL Ed
 | member | manipulation des contacts |
 | viewer | lecture seule |
 
+## Plans & durées (sans Stripe)
+
+Un espace reçoit un plan pour une **durée définie** (1 mois = mensuel par défaut, 3, 6 ou 12 mois),
+attribuée depuis `/admin` par un super-admin (`SUPER_ADMIN_EMAILS`).
+
+- L'échéance est stockée dans `organizations.current_period_end` : c'est la seule source de vérité.
+- Une prolongation pendant la période en cours **s'empile** (les jours restants ne sont pas perdus).
+- À l'échéance, l'espace repasse automatiquement en plan **gratuit** : fonctions payantes verrouillées,
+  quota réduit, données conservées. Aucune intervention manuelle n'est nécessaire.
+- Le journal `plan_changes` enregistre chaque attribution (qui, quand, de quel plan à quel plan).
+
+Quand Stripe sera branché, son webhook écrira simplement `current_period_end` : ce cycle de vie reste valable.
+
 ## Scripts
 
 ```bash
 npm run dev     # serveur de développement
 npm run build   # build production
 npm run lint    # ESLint
+node artifacts/e2e-subscription.mjs http://localhost:3000   # e2e abonnement (nettoie après lui)
 ```

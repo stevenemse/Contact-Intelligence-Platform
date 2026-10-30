@@ -21,10 +21,18 @@ export async function DELETE(req: NextRequest) {
 
   const db = serviceDb()!
   const ids = body.delete.ids
+
+  // Les fiches fusionnées pointent vers leur conservé (`merged_into`) : cette FK
+  // n'a pas de ON DELETE, donc supprimer un conservé échouait en 500. On supprime
+  // aussi les fiches absorbées — elles sont masquées partout et n'ont plus de sens.
+  const { data: children } = await db.from('contacts').select('id')
+    .eq('organization_id', ctx.orgId).in('merged_into', ids)
+  const allIds = [...new Set([...ids, ...((children ?? []) as { id: string }[]).map(c => c.id)])]
+
   // suppression en cascade des relations (FK on delete cascade)
-  const { error } = await db.from('contacts').delete().eq('organization_id', ctx.orgId).in('id', ids)
+  const { error } = await db.from('contacts').delete().eq('organization_id', ctx.orgId).in('id', allIds)
   if (error) return NextResponse.json({ error: 'Suppression impossible.' }, { status: 500 })
 
-  await logActivity(ctx.orgId, ctx.userId, 'contacts.bulk_delete', 'contact', null, { count: ids.length })
-  return NextResponse.json({ ok: true, count: ids.length })
+  await logActivity(ctx.orgId, ctx.userId, 'contacts.bulk_delete', 'contact', null, { count: allIds.length })
+  return NextResponse.json({ ok: true, count: allIds.length })
 }

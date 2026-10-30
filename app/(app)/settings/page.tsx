@@ -13,9 +13,12 @@ export default async function SettingsPage() {
 
   let contactCount = 0
   if (db) {
+    // mêmes fiches que le tableau de bord : les fiches absorbées par une fusion
+    // ne consomment pas de quota
     const { count } = await db.from('contacts')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', ctx.orgId)
+      .is('merged_into', null)
     contactCount = count ?? 0
   }
 
@@ -43,7 +46,7 @@ export default async function SettingsPage() {
             <div>
               <h3 className="section-title mb-2">Abonnement</h3>
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Plan actuel : <span className="badge badge-blue">{ctx.orgPlan}</span> · quota {ctx.quota.toLocaleString('fr-FR')} contacts.
+                Plan actuel : <span className="badge badge-blue">{ctx.orgPlan}</span> · quota {ctx.quota < 0 ? 'illimité' : `${ctx.quota.toLocaleString('fr-FR')} contacts`}.
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                 Comparez les plans ou mettez votre espace à niveau depuis la page Abonnement.

@@ -6,8 +6,7 @@ import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { getDictionary, type Locale } from '@/lib/i18n/dictionaries'
 import { getAuthUser } from '@/lib/supabase/server'
-import ThemeToggle from '@/components/theme-toggle'
-import LanguageToggle from '@/components/language-toggle'
+import SiteNav from '@/components/site-nav'
 
 /** Libellés traduits des pastilles de la section avant / après. */
 type ProofCopy = {
@@ -55,29 +54,10 @@ export default async function LandingPage() {
 
   return (
     <main id="main-content" className="landing-hero-bg min-h-screen">
-      <header className="landing-nav" style={{
-        display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 32px', height:72,
-        borderBottom:'1px solid var(--border)', position:'sticky', top:0, zIndex:10,
-        background:'#ffffff',
-      }}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{ width:34,height:34,borderRadius:10,background:'linear-gradient(135deg,var(--brand-light),var(--brand))',display:'grid',placeItems:'center',fontWeight:900,fontSize:13,color:'white' }}>CI</div>
-          <span style={{fontWeight:700,fontSize:15,color:'var(--text-primary)'}} translate="no">Contact Intelligence</span>
-        </div>
-        <nav style={{display:'flex',alignItems:'center',gap:8}}>
-          <Link href="/pricing" className="btn btn-ghost btn-sm">{t.pricing}</Link>
-          <ThemeToggle className="btn btn-ghost btn-sm nav-toggle" style={{ justifyContent: 'center' }} />
-          <LanguageToggle className="btn btn-ghost btn-sm nav-toggle" style={{ justifyContent: 'center' }} />
-          {user ? (
-            <Link href="/dashboard" className="btn btn-primary btn-sm">{workspaceLabel}</Link>
-          ) : (
-            <>
-              <Link href="/login" className="btn btn-ghost btn-sm">{t.login}</Link>
-              <Link href="/register" className="btn btn-primary btn-sm">{t.start}</Link>
-            </>
-          )}
-        </nav>
-      </header>
+      {/* Décor : grille + halos floutés dérivants (aria-hidden, pointer-events none) */}
+      <div className="landing-backdrop" aria-hidden="true"><i /><i /><i /></div>
+      {/* Nav publique partagée : logo gauche · liens centrés · actions droites */}
+      <SiteNav />
 
       <section style={{ maxWidth:1080, margin:'0 auto', padding:'96px 32px 72px', textAlign:'center' }}>
         <h1 className="fade-up delay-1" style={{ fontSize:'clamp(44px, 7vw, 78px)', fontWeight:800, letterSpacing:'-.035em', lineHeight:1.05, color:'var(--text-primary)' }}>

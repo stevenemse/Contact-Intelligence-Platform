@@ -83,13 +83,10 @@ export default async function DashboardPage() {
     }
   }
 
-  let dupGroups = 0
-  let contactsInDupGroups = 0
+  // doublons = fiche(s) en trop : un numéro partagé par 3 contacts compte 2 doublons
+  let duplicateExcess = 0
   for (const set of phoneContact.values()) {
-    if (set.size > 1) {
-      dupGroups += set.size - 1
-      contactsInDupGroups += set.size
-    }
+    if (set.size > 1) duplicateExcess += set.size - 1
   }
 
   // provenance par indicatif (carte + stats par pays) : réutilise les numéros
@@ -124,9 +121,10 @@ export default async function DashboardPage() {
 
   const kpis = [
     { label: t.dash.total, value: total, href: '/contacts' },
-    // « uniques » = contacts dont aucun autre contact ne partage le numéro principal
-    { label: t.dash.unique, value: total - contactsInDupGroups, href: '/contacts' },
-    { label: t.dash.dupes, value: dupGroups, href: '/duplicates' },
+    // « uniques » = contacts restants une fois les fiches en trop retirées
+    // (un seul contact compté par numéro principal, les fiches sans numéro restent uniques)
+    { label: t.dash.unique, value: total - duplicateExcess, href: '/contacts' },
+    { label: t.dash.dupes, value: duplicateExcess, href: '/duplicates' },
     { label: t.dash.validPhones, value: validPrimary, href: '/contacts?phoneValid=valid' },
     { label: t.dash.invalidPhones, value: invalidPrimary, href: '/contacts?phoneValid=invalid' },
     { label: t.dash.countries, value: byPhoneCountry.length, href: '/map' },

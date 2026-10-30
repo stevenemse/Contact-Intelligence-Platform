@@ -104,6 +104,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 type BatchRow = {
   id: string
+  file_name: string | null
   status: string
   source: string | null
   mapping: unknown
@@ -363,12 +364,16 @@ async function insertChunk(
 
 /** create : quota + création de la ligne d'import. */
 async function createImport(db: Db, ctx: OrgCtx, body: z.infer<typeof createSchema>) {
-  // Garde de quota : le plan limite le volume de contacts de l'organisation
+  // Garde de quota : le plan limite le volume de contacts de l'organisation.
+  // Les fiches absorbées par une fusion ne comptent pas (mêmes fiches que le
+  // tableau de bord et la jauge des paramètres).
   const { count: currentCount } = await db.from('contacts')
     .select('id', { count: 'exact', head: true })
     .eq('organization_id', ctx.orgId)
+    .is('merged_into', null)
   const quota = Math.max(ctx.quota, quotaForPlan(ctx.orgPlan))
-  if ((currentCount ?? 0) >= quota) {
+  // quota négatif = illimité (plan enterprise) : aucune garde de volume.
+  if (quota >= 0 && (currentCount ?? 0) >= quota) {
     return NextResponse.json({ error: 'QUOTA_REACHED', quota, plan: ctx.orgPlan }, { status: 402 })
   }
 
@@ -439,7 +444,7 @@ async function finishImport(db: Db, ctx: OrgCtx, body: z.infer<typeof finishSche
     await db.from('import_batches').update({ status })
       .eq('id', batch.id).eq('organization_id', ctx.orgId)
     await logActivity(ctx.orgId, ctx.userId, body.failed ? 'import.partial' : 'import.done', 'import', batch.id, {
-      file: batch.id, status, inserted: batch.new_contacts, skipped: batch.duplicates_skipped,
+      file: batch.file_name ?? batch.id, status, inserted: batch.new_contacts, skipped: batch.duplicates_skipped,
     })
   }
 
