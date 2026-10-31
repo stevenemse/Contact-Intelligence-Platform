@@ -103,23 +103,58 @@ export default function DupGroupList({ groups, contacts, canWrite }: {
 
     setBusy(true)
     let completed = 0
+    let absorbed = 0
+    const failures: { phone: string; error: string }[] = []
     try {
+      // Un groupe en échec n'arrête pas la fusion : le but d'une fusion en
+      // masse est d'avancer. On continue et on rend le compte-rendu complet.
       for (const group of selectedPending) {
         const keeperId = keepMap[group.normalized_phone] ?? group.contact_ids[0]
-        const res = await fetch('/api/duplicates/merge', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ keeperId, mergedIds: group.contact_ids.filter(id => id !== keeperId) }),
-        })
-        if (!res.ok) throw new Error(`Échec pour ${group.normalized_phone}`)
-        completed++
-        setDone(current => [...current, group.normalized_phone])
+        const mergedIds = group.contact_ids.filter(id => id !== keeperId)
+        try {
+          // absorbés en lots — évite les requêtes géantes et suit l'API
+          let chunkAbsorbed = 0
+          for (let i = 0; i < mergedIds.length; i += 500) {
+            const res = await fetch('/api/duplicates/merge', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ keeperId, mergedIds: mergedIds.slice(i, i + 500) }),
+            })
+            if (!res.ok) {
+              const detail = await res.json().catch(() => ({}))
+              throw new Error(detail.error ?? `HTTP ${res.status}`)
+            }
+            chunkAbsorbed += Math.min(500, mergedIds.length - i)
+          }
+          completed++
+          absorbed += chunkAbsorbed
+          setDone(current => [...current, group.normalized_phone])
+          // Mise à jour progressive de la notice
+          setNotice(
+            failures.length === 0
+              ? `${completed} groupe(s) fusionné(s), ${absorbed} fiche(s) absorbée(s).`
+              : `${completed} groupe(s) fusionné(s), ${absorbed} fiche(s) absorbée(s). ${failures.length} groupe(s) en échec : ${failures.slice(0, 3).map(f => f.phone).join(', ')}${failures.length > 3 ? '…' : ''}`
+          )
+        } catch (error) {
+          failures.push({ phone: group.normalized_phone, error: error instanceof Error ? error.message : 'Fusion impossible' })
+          setNotice(
+            failures.length === 0
+              ? `${completed} groupe(s) fusionné(s), ${absorbed} fiche(s) absorbée(s).`
+              : `${completed} groupe(s) fusionné(s), ${absorbed} fiche(s) absorbée(s). ${failures.length} groupe(s) en échec : ${failures.slice(0, 3).map(f => f.phone).join(', ')}${failures.length > 3 ? '…' : ''}`
+          )
+        }
       }
-      setSelected([])
-      setNotice(`${completed} groupe(s) fusionné(s), ${totalAbsorbed} fiche(s) absorbée(s).`)
+      setSelected(current => current.filter(phone => !selectedPending.some(g => g.normalized_phone === phone && !failures.some(f => f.phone === phone))))
+      // Notice finale avec détail des échecs le cas échéant
+      setNotice(
+        failures.length === 0
+          ? `${completed} groupe(s) fusionné(s), ${absorbed} fiche(s) absorbée(s).`
+          : `${completed} groupe(s) fusionné(s), ${absorbed} fiche(s) absorbée(s). ${failures.length} groupe(s) en échec : ${failures.slice(0, 3).map(f => f.phone).join(', ')}${failures.length > 3 ? '…' : ''}`
+      )
+      if (failures.length > 0) {
+        console.error('Échec fusion:', failures)
+      }
       router.refresh()
-    } catch {
-      setNotice(`${completed} groupe(s) fusionné(s). La fusion en masse a été interrompue pour sécuriser les données.`)
     } finally {
       setBusy(false)
     }
