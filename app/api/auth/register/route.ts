@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
     password: body.password,
-    email_confirm: true,
+    // NOTE: enlevant email_confirm: true pour activer la vérification email Supabase
+    // L'utilisateur recevra un email de confirmation et devra valider avant de se connecter
     user_metadata: { full_name: body.fullName ?? '' },
   })
   if (createErr || !created?.user) {
@@ -34,10 +35,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: fr }, { status: 400 })
   }
 
-  const supabase = await createSsrClient()
-  if (!supabase) return NextResponse.json({ error: 'Service momentanément indisponible.' }, { status: 503 })
-  const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password: body.password })
-  if (signInErr) return NextResponse.json({ error: 'Compte créé, connexion impossible — essayez de vous connecter.' }, { status: 401 })
-
-  return NextResponse.json({ ok: true, userId: created.user.id })
+  // NOTE: On ne connecte pas l'utilisateur automatiquement.
+  // Il doit vérifier son email d'abord. On retourne quand même un succès
+  // pour que le frontend puisse afficher un message "vérifiez votre email".
+  return NextResponse.json({ 
+    ok: true, 
+    userId: created.user.id,
+    needsEmailVerification: true,
+    email: created.user.email 
+  })
 }

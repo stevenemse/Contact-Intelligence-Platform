@@ -21,12 +21,16 @@ export async function POST(req: NextRequest) {
   })
   if (error || !data?.user) {
     const msg = error?.message ?? ''
-    const fr =
-      /invalid login credentials/i.test(msg) ? 'Email ou mot de passe incorrect.' :
-      /email not confirmed/i.test(msg) ? 'Email non confirmé — vérifiez votre boîte mail.' :
-      /rate limit/i.test(msg) ? 'Trop de tentatives. Réessayez dans quelques minutes.' :
-      'Connexion impossible. Vérifiez vos identifiants.'
-    return NextResponse.json({ error: fr }, { status: 401 })
+    // Gérer le cas où l'email n'est pas confirmé
+    const isUnconfirmed = /email.*not.*confirmed|confirm.*email|please.*confirm/i.test(msg)
+    const fr = isUnconfirmed
+      ? 'Email non confirmé — vérifiez votre boîte mail et cliquez sur le lien de confirmation.'
+      : /invalid login credentials/i.test(msg)
+        ? 'Email ou mot de passe incorrect.'
+        : /rate limit/i.test(msg)
+          ? 'Trop de tentatives. Réessayez dans quelques minutes.'
+          : 'Connexion impossible. Vérifiez vos identifiants.'
+    return NextResponse.json({ error: fr, isEmailUnconfirmed: isUnconfirmed }, { status: 401 })
   }
 
   // les cookies sb-* ont été écrits par le client SSR (setAll)

@@ -5,9 +5,13 @@ import { serviceDb } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/supabase/data'
 import { str } from '@/lib/supabase/helpers'
 
+// Un groupe de doublons peut compter des centaines de fiches (groupes WhatsApp
+// réimportés à chaque campagne) : la limite protège contre une requête mal
+// construite, pas contre une vraie fusion. Le client s'arrête bien avant.
+const MAX_MERGED = 2000
 const bodySchema = z.object({
   keeperId: z.string().uuid(),
-  mergedIds: z.array(z.string().uuid()).min(1).max(20),
+  mergedIds: z.array(z.string().uuid()).min(1).max(MAX_MERGED),
 })
 
 type PhoneRow = { id: string; normalized_phone: string | null }
@@ -19,6 +23,17 @@ type DupRow = {
   company: string | null
   job_title: string | null
   source: string | null
+}
+
+function getClientIp(request: NextRequest): string {
+  // Essayer d'obtenir l'IP depuis les headers X-Forwarded-For (proxies/Cloudflare)
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  if (forwardedFor) {
+    const ip = forwardedFor.split(',')[0].trim()
+    if (ip) return ip
+  }
+  // Fallback : on utilise 'origin-based'
+  return 'origin-based'
 }
 
 export async function POST(req: NextRequest) {
@@ -70,92 +85,86 @@ export async function POST(req: NextRequest) {
   const emailSet = new Set(keeperEmails.map(e => str(e.email).toLowerCase()).filter(Boolean))
   let hasPrimaryEmail = keeperEmails.some(e => Boolean(e.is_primary))
 
-  const { data: keeperTagsRaw } = await db.from('contact_tags')
-    .select('tag_id').eq('organization_id', org).eq('contact_id', keeperId)
-  const tagSet = new Set(((keeperTagsRaw ?? []) as unknown as TagRow[]).map(t => str(t.tag_id)))
+  // ── État des fiches absorbées, en 4 requêtes groupées quel que soit le volume ──
+  const dupIds = body.mergedIds
+  const [dupPhonesRes, dupEmailsRes, dupTagsRes, dupChangesRes] = await Promise.all([
+    db.from('contact_phones').select('id, normalized_phone').eq('organization_id', org).in('contact_id', dupIds),
+    db.from('contact_emails').select('id, email').eq('organization_id', org).in('contact_id', dupIds),
+    db.from('contact_tags').select('id, tag_id').eq('organization_id', org).in('contact_id', dupIds),
+    db.from('contact_changes').select('id').eq('organization_id', org).in('contact_id', dupIds),
+  ])
+  const dupPhones = (dupPhonesRes.data ?? []) as unknown as PhoneRow[]
+  const dupEmails = (dupEmailsRes.data ?? []) as unknown as EmailRow[]
+  const dupTags = (dupTagsRes.data ?? []) as unknown as (TagRow & { id: string })[]
 
   // entreprises / fonctions rencontrées : jamais perdues, même si la fiche absorbée disparaît des listes
   const extraCompanies = new Set<string>()
   const extraJobTitles = new Set<string>()
-  const absorbedSummary: { id: string; name: string; company: string; jobTitle: string }[] = []
-
   for (const dup of dupes as unknown as DupRow[]) {
-    const dupId = str(dup.id)
     const dupCompany = str(dup.company).trim()
     const dupJobTitle = str(dup.job_title).trim()
     if (dupCompany && dupCompany !== keeperCompany) extraCompanies.add(dupCompany)
     if (dupJobTitle) extraJobTitles.add(dupJobTitle)
-    absorbedSummary.push({
-      id: dupId,
-      name: str(dup.full_name),
-      company: dupCompany,
-      jobTitle: dupJobTitle,
-    })
-
-    // ── Téléphones : renumérotation sans doublon, un seul principal ──
-    const { data: dupPhonesRaw } = await db.from('contact_phones')
-      .select('id, normalized_phone').eq('organization_id', org).eq('contact_id', dupId)
-    for (const p of ((dupPhonesRaw ?? []) as unknown as PhoneRow[])) {
-      const norm = str(p.normalized_phone)
-      if (norm && phoneSet.has(norm)) {
-        // numéro déjà présent sur le conservé : on retire la ligne redondante
-        await db.from('contact_phones').delete().eq('organization_id', org).eq('id', str(p.id))
-        continue
-      }
-      const makePrimary = !hasPrimaryPhone
-      await db.from('contact_phones').update({ contact_id: keeperId, is_primary: makePrimary })
-        .eq('organization_id', org).eq('id', str(p.id))
-      if (makePrimary) hasPrimaryPhone = true
-      if (norm) phoneSet.add(norm)
-    }
-
-    // ── Emails : idem ──
-    const { data: dupEmailsRaw } = await db.from('contact_emails')
-      .select('id, email').eq('organization_id', org).eq('contact_id', dupId)
-    for (const e of ((dupEmailsRaw ?? []) as unknown as EmailRow[])) {
-      const mail = str(e.email).toLowerCase()
-      if (mail && emailSet.has(mail)) {
-        await db.from('contact_emails').delete().eq('organization_id', org).eq('id', str(e.id))
-        continue
-      }
-      const makePrimary = !hasPrimaryEmail
-      await db.from('contact_emails').update({ contact_id: keeperId, is_primary: makePrimary })
-        .eq('organization_id', org).eq('id', str(e.id))
-      if (makePrimary) hasPrimaryEmail = true
-      if (mail) emailSet.add(mail)
-    }
-
-    // ── Tags (groupes) : conservés, sans violer la contrainte unique ──
-    const { data: dupTagsRaw } = await db.from('contact_tags')
-      .select('tag_id').eq('organization_id', org).eq('contact_id', dupId)
-    for (const t of ((dupTagsRaw ?? []) as unknown as TagRow[])) {
-      const tagId = str(t.tag_id)
-      if (!tagSet.has(tagId)) {
-        await db.from('contact_tags').insert({ organization_id: org, contact_id: keeperId, tag_id: tagId })
-        tagSet.add(tagId)
-      }
-    }
-    await db.from('contact_tags').delete().eq('organization_id', org).eq('contact_id', dupId)
-
-    // ── Historique : rattaché à la fiche finale ──
-    await db.from('contact_changes').update({ contact_id: keeperId }).eq('organization_id', org).eq('contact_id', dupId)
-
-    // ── Marquage + journal ──
-    await db.from('contacts')
-      .update({ merged_into: keeperId, updated_at: new Date().toISOString() })
-      .eq('organization_id', org).eq('id', dupId)
-    await db.from('merge_logs').insert({
-      organization_id: org,
-      keeper_id: keeperId,
-      merged_id: dupId,
-      kept_values: keptValues,
-      discarded_values: {
-        fullName: dup.full_name ?? null, company: dup.company ?? null,
-        jobTitle: dup.job_title ?? null, source: dup.source ?? null,
-      },
-      merged_by: ctx.userId,
-    })
   }
+
+  // ── Téléphones : renumérotation sans doublon, un seul principal (« in batch ») ──
+  const phoneIdsToDelete: string[] = []
+  const phoneIdsMovePrimary: string[] = []
+  const phoneIdsMoveSilent: string[] = []
+  for (const p of dupPhones) {
+    const norm = str(p.normalized_phone)
+    if (norm && phoneSet.has(norm)) { phoneIdsToDelete.push(str(p.id)); continue }
+    if (!hasPrimaryPhone) { phoneIdsMovePrimary.push(str(p.id)); hasPrimaryPhone = true }
+    else phoneIdsMoveSilent.push(str(p.id))
+    if (norm) phoneSet.add(norm)
+  }
+  if (phoneIdsToDelete.length) await db.from('contact_phones').delete().eq('organization_id', org).in('id', phoneIdsToDelete)
+  if (phoneIdsMovePrimary.length) await db.from('contact_phones').update({ contact_id: keeperId, is_primary: true }).eq('organization_id', org).in('id', phoneIdsMovePrimary)
+  if (phoneIdsMoveSilent.length) await db.from('contact_phones').update({ contact_id: keeperId, is_primary: false }).eq('organization_id', org).in('id', phoneIdsMoveSilent)
+
+  // ── Emails : idem ──
+  const emailIdsToDelete: string[] = []
+  const emailIdsMovePrimary: string[] = []
+  const emailIdsMoveSilent: string[] = []
+  for (const e of dupEmails) {
+    const mail = str(e.email).toLowerCase()
+    if (mail && emailSet.has(mail)) { emailIdsToDelete.push(str(e.id)); continue }
+    if (!hasPrimaryEmail) { emailIdsMovePrimary.push(str(e.id)); hasPrimaryEmail = true }
+    else emailIdsMoveSilent.push(str(e.id))
+    if (mail) emailSet.add(mail)
+  }
+  if (emailIdsToDelete.length) await db.from('contact_emails').delete().eq('organization_id', org).in('id', emailIdsToDelete)
+  if (emailIdsMovePrimary.length) await db.from('contact_emails').update({ contact_id: keeperId, is_primary: true }).eq('organization_id', org).in('id', emailIdsMovePrimary)
+  if (emailIdsMoveSilent.length) await db.from('contact_emails').update({ contact_id: keeperId, is_primary: false }).eq('organization_id', org).in('id', emailIdsMoveSilent)
+
+  // ── Tags (groupes) : conservés, sans violer la contrainte unique ──
+  const { data: keeperTagsRaw } = await db.from('contact_tags')
+    .select('tag_id').eq('organization_id', org).eq('contact_id', keeperId)
+  const tagSet = new Set(((keeperTagsRaw ?? []) as unknown as TagRow[]).map(t => str(t.tag_id)))
+  const newTags = dupTags.filter(t => { const id = str(t.tag_id); if (!id || tagSet.has(id)) return false; tagSet.add(id); return true })
+  if (newTags.length) {
+    await db.from('contact_tags').insert(newTags.map(t => ({ organization_id: org, contact_id: keeperId, tag_id: str(t.tag_id) })))
+  }
+  await db.from('contact_tags').delete().eq('organization_id', org).in('contact_id', dupIds)
+
+  // ── Historique : rattaché à la fiche finale ──
+  await db.from('contact_changes').update({ contact_id: keeperId }).eq('organization_id', org).in('contact_id', dupIds)
+
+  // ── Marquage + journal (un seul upsert en masse) ──
+  await db.from('contacts')
+    .update({ merged_into: keeperId, updated_at: new Date().toISOString() })
+    .eq('organization_id', org).in('id', dupIds)
+
+  // Ajout du journal de fusion avec l'IP de l'utilisateur
+  const clientIp = getClientIp(req)
+  await db.from('merge_logs').insert(body.mergedIds.map(dupId => ({
+    organization_id: org,
+    keeper_id: keeperId,
+    merged_id: dupId,
+    kept_values: keptValues,
+    merged_by: ctx.userId,
+    ip_address: clientIp,
+  })))
 
   // Si le conservé n'avait pas d'entreprise, on récupère la première rencontrée.
   const companies = [...extraCompanies]
@@ -171,7 +180,6 @@ export async function POST(req: NextRequest) {
       fields: {
         fusion_entreprises: companies.join(', '),
         fusion_fonctions: [...extraJobTitles].join(', '),
-        fusion_fiches: absorbedSummary.map(a => a.name || a.company || a.id).join(', '),
       },
     })
   }
@@ -179,7 +187,6 @@ export async function POST(req: NextRequest) {
   await logActivity(org, ctx.userId, 'duplicates.merged', 'contact', keeperId, {
     merged: body.mergedIds,
     keptCompanies: companies,
-    absorbed: absorbedSummary,
   })
 
   return NextResponse.json({ ok: true, merged: body.mergedIds.length, companies })
